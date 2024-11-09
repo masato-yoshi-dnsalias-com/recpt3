@@ -1,0 +1,38 @@
+[package]
+name = "recpt3"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+bytes = { version = "^1.2" }
+colored = { version = "^2.0.0" }
+chrono = { version = "^0.4" }
+crc = { version = "^3.2" }
+env_logger = { version = "^0.8" }
+fcntl = { version = "^0.1" }
+fern = { version = "^0.6" }
+getopts = { version = "^0.2" }
+http = { version = "^1" }
+	indicatif = "^0.17.3"
+libc = { version = "^0.2" }
+log = {version = "^0.4.17"}
+nix = { version = "^0.28.0", features = ["ioctl"] }
+pin-project-lite = { version = "^0.2.4" }
+signal-hook = { version = "^0.3" }
+simplelog = { version = "^0.9" }
+
+[build-dependencies]
+serde = { version = "^1.0", features = ["derive"] }
+toml = { version = "^0.8"}
+
+[[bin]]
+name = "recpt3"
+path = "src/recpt3.rs"
+
+[[bin]]
+name = "checksignal"
+path = "src/checksignal.rs"
+
+[[bin]]
+name = "ts_splitter"
+path = "src/ts_splitter.rs"
