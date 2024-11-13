@@ -15,7 +15,7 @@ fn main() {
     file.read_to_string(&mut contents)
         .expect("Failed to read version.toml");
 
-    let versions: Versions = toml::from_str(&contents).expect("Failed to parse ver.toml");
+    let versions: Versions = toml::from_str(&contents).expect("Failed to parse version.toml");
 
     for (key, value) in versions.versions.iter() {
         println!("cargo:rustc-env=VERSION_{}={}", key.to_uppercase(), value);
