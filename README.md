@@ -2,7 +2,7 @@
 ## Rust で記述された recpt1 互換のテレビチューナーリーダー/ARIB STD-B25 デコーダーです。
 [recpt1](https://github.com/stz2012/recpt1) を Rust で書き直しています。（一部機能の削除、変更はしています）  
 　削除機能  
-　　recpt3　　 ：UDストリーム配信機能  
+　　recpt3　　 ：UDPストリーム配信機能  
 　　checksignal：bell 鳴動機能  
 　　recpt1ctl　 ：機能削除  
 　変更機能  
