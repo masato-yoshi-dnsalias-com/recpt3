@@ -2,7 +2,7 @@ extern crate getopts;
 
 use chrono::Local;
 use colored::*;
-use env_logger::{Builder, Env};
+use env_logger::{Builder, Env, Target};
 use getopts::Options;
 use log::{info, error};
 use signal_hook::{consts::SIGINT, consts::SIGTERM,
@@ -191,6 +191,7 @@ fn main() {
             )
         }
     )
+    .target(Target::Stdout)  // 出力先をStdoutに変更
     .init();
 
     // コマンドラインオプションチェック

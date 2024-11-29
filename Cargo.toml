@@ -8,7 +8,7 @@ bytes = { version = "^1.2" }
 colored = { version = "^2.0.0" }
 chrono = { version = "^0.4" }
 crc = { version = "^3.2" }
-env_logger = { version = "^0.8" }
+env_logger = { version = "^0.11" }
 fcntl = { version = "^0.1" }
 fern = { version = "^0.6" }
 getopts = { version = "^0.2" }

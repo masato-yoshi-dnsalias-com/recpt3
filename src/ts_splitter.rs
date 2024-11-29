@@ -3,7 +3,7 @@ extern crate getopts;
 use chrono::Local;
 use colored::*;
 use std::env;
-use env_logger::{Builder, Env};
+use env_logger::{Builder, Env, Target};
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{error, debug, info, warn};
 use getopts::Options;
@@ -194,6 +194,7 @@ fn main() {
             )
         }
     )
+    .target(Target::Stdout)  // 出力先をStdoutに変更
     .init();
 
     // コマンドラインオプションチェック

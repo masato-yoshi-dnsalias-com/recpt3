@@ -2,7 +2,7 @@ extern crate getopts;
 
 use chrono::Local;
 use colored::*;
-use env_logger::{Builder, Env};
+use env_logger::{Builder, Env, Target};
 use getopts::Options;
 use log::info;
 use std::env;
@@ -275,24 +275,12 @@ fn main() {
             )
         }
     )
+    .target(Target::Stdout)  // 出力先をStdoutに変更
     .init();
 
     // コマンドラインオプションチェック
     let program = PROGRAM_RECPT;
     let (mut opt, dopt) = command_line_check(program);
-
-    /*
-    if opt.use_b25 == true { info!("using B25...") };
-    if dopt.strip == TRUE { info!("enable B25 strip") };
-    if dopt.emm == TRUE { info!("enable B25 emm processing") };
-    if opt._use_http == true { info!("creating a http daemon") };
-    if opt._use_round == true { info!("set round {:?}", dopt.round) };
-    //if opt.use_udp == true { info!("enable UDP broadcasting") };
-    //if opt.host_to != "" { info!("UDP destination address: {}", opt.host_to) };
-    //if opt.port_to > 0 { info!("UDP port: {}", opt.port_to) };
-    if opt._use_device == true { info!("using device: {}", opt.device) };
-    if opt._use_lnb == true { info!("LNB = {}",opt._lnb) };
-    */
 
     //if opt.sids.len() > 0 { info!("{}", opt.sids) };
 

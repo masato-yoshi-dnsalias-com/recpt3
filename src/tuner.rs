@@ -745,6 +745,7 @@ pub fn tuner_device(device: &String, channel: &String) -> (String, Result<fs::Fi
                     },
                     // オープンNGの場合はループを再開
                     Err(_err) => {
+                        drop(tuner_dev.to_string());
                         debug!("{} not open continue", tuner_dev);
                         continue
                     },
