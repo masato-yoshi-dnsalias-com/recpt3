@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::{debug, info, warn};
 use crc::{Crc, CRC_32_ISO_HDLC};
 
 pub const MAX_PID: usize = 8192;
@@ -6,6 +6,7 @@ pub const MAX_SERVICES: usize = 50;
 pub const LENGTH_PACKET: usize = 188;
 pub const TSS_SUCCESS: i32 = 0;
 pub const TSS_ERROR: i32 = -1;
+pub const TSS_NULL: i32 = -2;
 pub const SECTION_CONTINUE: i32 = 1;
 pub const LENGTH_PAT_HEADER: i32 = 12;
 
@@ -69,6 +70,7 @@ pub fn split_select(mut sp: &mut Splitter, buff: &mut Vec<u8>) -> i32 {
 // TS 分離処理
 pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>) -> i32 {
 
+    //debug!("Called split_ts");
     let mut result = TSS_SUCCESS ;
     let length = buff.len();
     let mut in_index = 0;
@@ -100,7 +102,7 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
                 sp.pat[3] = sp.pat_count;
 
                 // Splitバッファーに新しいPATを作成
-                for cnt in 0..=LENGTH_PACKET - 1 {
+                for cnt in 0..LENGTH_PACKET {
                     split_buff.push(sp.pat[cnt]);
                 }
             },
@@ -113,7 +115,7 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
                     if (buff[in_index + 1] & 0x40) == 0x40 {
 
                         // バージョンチェック
-                        for pmts in 0..=sp.pmt_retain - 1 {
+                        for pmts in 0..sp.pmt_retain {
                             if sp.pmt_version.pid[pmts as usize] == pid {
                                 version = sp.pmt_version.version[pmts as usize];
                             }
@@ -122,12 +124,15 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
                         if version != buff[in_index + 10] & 0x3e ||
                             sp.pmt_retain != sp.pmt_counter {
                             // 再チェック
+                            debug!("split_ts Call rescan_pid is Version Check NG version={}, buff[{}]={}, sp.pmt_retain={}, sp.pmt_counter={}",
+                                version, in_index + 10 & 0x3e, buff[in_index + 10] & 0x3e, sp.pmt_retain, sp.pmt_counter);
                             result = rescan_pid(&mut sp, &buff[in_index..]);
                         }
                     }
                     else {
                         if sp.pmt_retain != sp.pmt_counter {
                             // 再チェック
+                            debug!("split_ts Call rescan_pid is so.pmt_retain={} != sp.pmt_counter={}", sp.pmt_retain, sp.pmt_counter);
                             result = rescan_pid(sp, &buff[in_index..]);
                         }
                     };
@@ -135,7 +140,7 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
 
                 // sp.pids[pid]が「1」のパケットは残すパケット
                 if sp.pids[pid as usize] != 0 {
-                    for cnt in 0..=LENGTH_PACKET - 1 {
+                    for cnt in 0..LENGTH_PACKET {
                         // Splitバッファー作成
                         split_buff.push(buff[cnt + in_index]);
                     }
@@ -159,37 +164,55 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
 // PIDの再スキャン
 pub fn rescan_pid(mut sp: &mut Splitter, buff: &[u8]) -> i32 {
 
-    let mut result = TSS_ERROR;
+    debug!("Called rescan_pid");
+
+    // リターン変数設定
+    let mut result = TSS_NULL;
+
+    // PIDの取得
+    let pid = get_pid(&buff[..]);
 
     // クリア処理
     if sp.pmt_counter == sp.pmt_retain {
+
+        // sp.pidsのクリア
+        sp.pids = sp.pmt_pids;
 
         // sp.pmt_counterのクリア
         sp.pmt_counter = 0;
 
         // sp.section_remain,sp.packet_seqのクリア
-        for cnt in 0..=MAX_PID - 1 {
+        for cnt in 0..MAX_PID {
             sp.section_remain[cnt] = 0;
             sp.packet_seq[cnt] = 0;
         };
-        eprintln!("Rescan PID");
+        warn!("Rescan PID");
 
     };
 
-    if TSS_SUCCESS ==  analyze_pmt(&mut sp, &buff[0..], 2) {
+
+    // PMT解析呼び出し
+    let ret_analyze_pmt = analyze_pmt(&mut sp, &buff[0..], 2);
+
+    // TSS_SUCCESS, SECTION_CONTINUEの場合にsp.pmt_counterカウントアップ
+    if TSS_SUCCESS ==  ret_analyze_pmt || SECTION_CONTINUE == ret_analyze_pmt {
         sp.pmt_counter += 1;
     }
+
+    debug!("rescan_pid sp.pmt_counter={}, sp.pmt_retain={}, sp.pmt_pids[{}]={}",
+        sp.pmt_counter, sp.pmt_retain, pid, sp.pmt_pids[pid as usize]);
 
     if sp.pmt_counter == sp.pmt_retain {
 
         result = TSS_SUCCESS;
 
         // PIDカウンターの減算
-        for cnt in 0..=MAX_PID - 1 {
+        for cnt in 0..MAX_PID {
             if sp.pids[cnt] > 0 {
                 sp.pids[cnt] -= 1;
             };
         };
+        warn!("Rescan PID End");
     };
 
     // リターン情報
@@ -261,6 +284,8 @@ pub fn read_ts(mut sp: &mut Splitter, data: &mut [u8]) -> i32 {
 // PAT解析処理
 pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
 
+    //debug!("Called analyze_pat");
+
     // 変数設定
     let mut result = TSS_SUCCESS;
     let mut avail_sids: Vec<i16> = vec![];
@@ -293,7 +318,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
             let service_id: i16 = ((data[cnt] as i16) << 8) + data[cnt + 1] as i16;
             avail_sids.push(service_id);
             avail_pmts.push(pid);
-            debug!("service_id[{}] = {:x} , pid = {:x}", index, service_id, pid);
+            debug!("analyze_pat service_id[{}] = {:x} , pid = {:x}", index, service_id, pid);
 
             cnt += 4;
 
@@ -329,7 +354,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("pid={} , service_id={} \"hd or sd1\"", pid, service_id);
+                        debug!("analyze_pat pid={:x} , service_id={} \"hd or sd1\"", pid, service_id);
                     },
 
                     // SD2
@@ -340,7 +365,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("pid={} , service_id={} \"sd2\"", pid, service_id);
+                        debug!("analyze_pat pid={:x} , service_id={} \"sd2\"", pid, service_id);
                     },
 
                     // SD3
@@ -351,7 +376,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("pid={} , service_id={} \"sd3\"", pid, service_id);
+                        debug!("analyze_pat pid={:x} , service_id={} \"sd3\"", pid, service_id);
                     },
 
                     // 1SEG
@@ -362,7 +387,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("pid={} , service_id={} \"1seg\"", pid, service_id);
+                        debug!("analyze_pat pid={:x} , service_id={} \"1seg\"", pid, service_id);
                     },
 
                     // 全て
@@ -373,7 +398,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("pid={} , service_id={} \"all\"", pid, service_id);
+                        debug!("analyze_pat pid={:x} , service_id={} \"all\"", pid, service_id);
                     },
                     
                     // EPG
@@ -382,7 +407,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         sp.pids[0x12] = 1;
                         sp.pids[0x23] = 1;
                         sp.pids[0x29] = 1;
-                        debug!("pid={} , service_id={} \"epg\"", pid, service_id);
+                        debug!("analyze_pat pid={:x} , service_id={} \"epg\"", pid, service_id);
                     },
 
                     // EPG1SEG
@@ -390,7 +415,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         sp.pids[0x11] = 1;
                         sp.pids[0x26] = 1;
                         sp.pids[0x27] = 1;
-                        debug!("pid={} , service_id={} \"epg1seg\"", pid, service_id);
+                        debug!("analyze_pat pid={:x} , service_id={} \"epg1seg\"", pid, service_id);
                     },
 
                     // その他
@@ -401,7 +426,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("pid={} , service_id={} \"\"", pid, service_id);
+                        debug!("analyze_pat pid={:x} , service_id={} \"\"", pid, service_id);
                     },
                     _ => {
                         match sid.parse::<i16>() {
@@ -413,7 +438,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                                 pid_pos.push(cnt);
                                 sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                                 sp.pmt_retain += 1;
-                                debug!("pid={} , service_id={} \"{}\"", pid, service_id, sid);
+                                debug!("analyze_pat pid={:x} , service_id={} \"{}\"", pid, service_id, sid);
                                 };
                             },
                             Err(_err) => {
@@ -462,12 +487,14 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
 // 新しいPATの作成
 pub fn recreate_pat(sp: &mut Splitter, data: &[u8], pos: &Vec<usize>) -> i32 {
 
+    debug!("Called recreate_pat");
+
     let mut crc_data: Vec<u8> = vec![];
 
 
     // CRC32計算データの作成
     // チャンネルによって変わらない部分
-    for cnt in 0..=(LENGTH_PAT_HEADER - 4) as usize {
+    for cnt in 0..(LENGTH_PAT_HEADER - 3) as usize {
         crc_data.push(data[cnt]);
     }
 
@@ -479,7 +506,7 @@ pub fn recreate_pat(sp: &mut Splitter, data: &[u8], pos: &Vec<usize>) -> i32 {
 
     // チャンネルによって変わる部分
     for pos_num in pos {
-        for cnt in 0..=3 {
+        for cnt in 0..4 {
             crc_data.push(data[pos_num + cnt]);
         }
     }
@@ -495,12 +522,12 @@ pub fn recreate_pat(sp: &mut Splitter, data: &[u8], pos: &Vec<usize>) -> i32 {
     crc_data.push((checksum       & 0xff) as u8);
 
     // 0xff埋め
-    for _cnt in crc_data.len()..=LENGTH_PACKET - 1 {
+    for _cnt in crc_data.len()..LENGTH_PACKET {
         crc_data.push(0xff);
     }
 
     // PAT変数へ設定
-    for cnt in 0..=LENGTH_PACKET - 1 {
+    for cnt in 0..LENGTH_PACKET {
         sp.pat[cnt] = crc_data[cnt];
     }
 
@@ -519,14 +546,17 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
     // PIDの取得
     let pid = get_pid(&data[..]);
 
+    debug!("Called analyze_pmt pid={:x}", pid);
+
     // PES開始インジケータ
     if data[1] & 0x40 == 0x40  {
+        debug!("analyze_pmt PES開始インジケータ");
 
         // セクションサイズ取得(ヘッダ込)
         sp.section_remain[pid as usize] = (((data[6] as i16 & 0x0f) << 8) + data[7] as i16) as u16;
         payload_offset =  5;
 
-        for cnt in 0..=sp.pmt_retain - 1 {
+        for cnt in 0..sp.pmt_retain {
             if sp.pmt_version.pid[cnt as usize] == pid {
                 sp.pmt_version.version[cnt as usize] = data[10] & 0x3e;
             }
@@ -542,7 +572,16 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
             (data[payload_offset + 11] as i16) + payload_offset as i16 + 12;
         let mut p = payload_offset as i16 + 12;
 
+        debug!("analyze_pmt p={},n={}, data.len={}",p, n, data.len());
+
         while p < n {
+
+            // data.lenを超える場合は次を処理
+            if data.len() <= p.try_into().unwrap() {
+                debug!("analyze_pmt while break");
+                break;
+            };
+
             let tag: u32 = data[p as usize] as u32;
             let len: u32 = data[p as usize + 1] as u32;
             p += 2;
@@ -557,11 +596,13 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
     else {
         // セクション先頭が飛んでいる場合
         if sp.section_remain[pid as usize] == 0 {
+            debug!("analyze_pmt Return TSS_ERROR : セクション先頭が飛んでいる");
             return TSS_ERROR;
         }
 
         // パケットカウンタが飛んでいる場合
         if (data[3] & 0x0f) != ((sp.packet_seq[pid as usize] + 1) & 0x0f) {
+            debug!("analyze_pmt Return TSS_ERROR : パケットカウンタが飛んでいる");
             return TSS_ERROR;
         }
         payload_offset = 4;
@@ -572,40 +613,56 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
     // 巡回カウンタ
     sp.packet_seq[pid as usize] = data[3] & 0x0f;
 
-
     let mut nall = sp.section_remain[pid as usize];
     if nall > (LENGTH_PACKET - payload_offset) as u16 {
         nall = (LENGTH_PACKET - payload_offset) as u16;
     }
+
+    debug!("analyze_pmt nall={}", nall);
 
     // ES PID
     while n <= (nall + payload_offset as u16 - 5) as i16 {
 
         // ストリーム種別が 0x0D（type D）は出力対象外
         if data[n as usize] != 0x0d {
+
             let epid = get_pid(&data[(n as usize)..]);
             sp.pids[epid as usize] = mark;
+
         };
 
         n += 4 + ((data[n as usize + 3] as i16 & 0x0F) << 8) as i16 + data[n as usize + 4] as i16 + 1;
         retry_count += 1;
 
         if retry_count > nall {
-            debug!("TSS_ERROR");
+
+            debug!("analyze_pmt Return TSS_ERROR : retry_count={} > {}", retry_count, nall);
+
             // リターン情報
             return TSS_ERROR;
+
         }
     }
 
     sp.section_remain[pid as usize] -= nall;
+    debug!("analyze_pmt sp.section_remain[{}]={}", pid, sp.section_remain[pid as usize]);
 
     if sp.section_remain[pid as usize] > 0 {
+
+        debug!("analyze_pmt Return SECTION_CONTINUE");
+
         // リターン情報
+        //return TSS_SUCCESS;
         return SECTION_CONTINUE;
+
     }
     else {
+
+        debug!("analyze_pmt Return TSS_SUCCESS");
+
         // リターン情報
         return TSS_SUCCESS;
+
     }
 
 }

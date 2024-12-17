@@ -56,7 +56,7 @@ pub unsafe fn b25_decode(dec: *mut ARIB_STD_B25, sbuf: &ARIB_STD_B25_BUFFER) -> 
     let mut result;
 
     // BCASカードへデータ送信
-    //debug!("put len = {}", sbuf.size);
+    //debug!("b25_decode put len = {}", sbuf.size);
     result = dec.as_ref().expect("b25->put failed").put(sbuf);
     if result < 0 { error!("b25->put failed") };
 
@@ -69,7 +69,7 @@ pub unsafe fn b25_decode(dec: *mut ARIB_STD_B25, sbuf: &ARIB_STD_B25_BUFFER) -> 
     // BCASカードからデータ受信
     result = dec.as_ref().expect("b25->get failed").get(&mut buffer_struct);
     if result < 0 { error!("b25->get failed(result={})", result) };
-    //debug!("rc={} , get len = {}", result,buffer_struct.size);
+    //debug!("b25_decode rc={} , get len = {}", result,buffer_struct.size);
 
     match buffer_struct.size {
         0 => (&[0], 0),

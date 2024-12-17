@@ -15,7 +15,7 @@ use crate::tuner::{CAP, channel_type, start_rec, tuner_device, tune};
 
 pub fn http_daemon(command_opt: CommanLineOpt, decoder_opt: DecoderOptions) -> () {
 
-    debug!("run as a daemon..");
+    debug!("http_daemon run as a daemon..");
 
     let addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)), command_opt._http_port);
     let _addr_v4 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0,0,0,0)), command_opt._http_port);
@@ -92,7 +92,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                 // リクエストを行毎に分解
                 let request  = std::str::from_utf8(&req_buff[..n]).unwrap();
                 let request_line: Vec<&str> = request.lines().collect();
-                debug!("request={:?}", request_line);
+                debug!("response_stream request={:?}", request_line);
                 
                 // 1行目をパーツ毎に分解
                 let request_line = request_line[0];
@@ -100,11 +100,11 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                 let method = parts.next().unwrap();
                 let path = parts.next().unwrap();
                 let version = parts.next().unwrap();
-                debug!("Method={} , Path={} , Version{}", method, path, version);
+                debug!("response_stream Method={} , Path={} , Version{}", method, path, version);
 
                 // urlを分割
                 let uri: Vec<&str> = path.split('/').collect();
-                debug!("uri.len()={},{:?}",uri.len(), uri); 
+                debug!("response_stream uri.len()={},{:?}",uri.len(), uri); 
 
                 // urlからチャンネルとsidを取得
                 let (channel, sid) = match uri.len() {
@@ -185,7 +185,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                     // バッファへ読み込み
                     let length = {
                         let read_buffer = data_reader.fill_buf().unwrap();
-                        //debug!("data_reader={:?}",&read_buffer.len());
+                        //debug!("response_stream data_reader={:?}",&read_buffer.len());
 
                         // リードバッファ作成
                         let b25_buff = ARIB_STD_B25_BUFFER {
@@ -242,7 +242,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                             let write_buffer = if command_opt.use_splitter == true {
 
                                 if result != TSS_SUCCESS && split_buff.len() > 0 {
-                                    debug!("split_ts failed");
+                                    debug!("response_stream split_ts failed");
                                 };
 
                                 // ts splitter処理時のバッファ作成
@@ -283,7 +283,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                     };
 
                     // リードバッファクリア
-                    //debug!("clear length={:?}", length);
+                    //debug!("response_stream clear length={:?}", length);
                     data_reader.consume(length.try_into().unwrap());
 
                 };

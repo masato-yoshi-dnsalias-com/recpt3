@@ -27,7 +27,7 @@ use crate::arib_b25::{ARIB_STD_B25, ARIB_STD_B25_BUFFER, B_CAS_CARD};
 use crate::commands::{PROGRAM_TS_SPLITTER, TRUE, FALSE};
 use crate::commands::{CommanLineOpt, DecoderOptions};
 use crate::decoder::{b25_startup, b25_decode, b25_shutdown};
-use crate::ts_splitter_core::{split_startup, split_select, split_ts, TSS_SUCCESS};
+use crate::ts_splitter_core::{split_startup, split_select, split_ts, TSS_ERROR, TSS_SUCCESS};
 use crate::tuner::CAP;
 
 pub const VERSION: &str = env!("VERSION_TS_SPLITTER");
@@ -242,7 +242,7 @@ fn ts_split(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions) -> ()
     info!("input file={} , size={}", command_opt.infile.to_string(),file_size);
 
     // 出力ファイルオープン
-    let mut write_buf_file = BufWriter::new(File::create(command_opt.outfile.to_string()).unwrap());
+    let mut write_buf_file = BufWriter::with_capacity(CAP, File::create(command_opt.outfile.to_string()).unwrap());
     info!("output file = {}", command_opt.outfile.to_string());
 
     // SIGNAL処理用の変数設定
@@ -268,7 +268,7 @@ fn ts_split(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions) -> ()
                     loop_exit2.store(true, Ordering::Release);
                 },
                 SIGUSR1 => {
-                    debug!("SIGUSR1 received. cleaning up...");
+                    debug!("ts_split SIGUSR1 received. cleaning up...");
                     loop_exit2.store(true, Ordering::Release);
                 },
                 SIGUSR2 => {
@@ -291,6 +291,7 @@ fn ts_split(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions) -> ()
 
             // ファイルリードしバッファーに格納
             let read_buffer = read_buf_file.fill_buf().unwrap();
+            //println!("read_buffer.len={}", read_buffer.len());
 
             // リードバッファ作成
             let b25_buff = ARIB_STD_B25_BUFFER {
@@ -342,8 +343,15 @@ fn ts_split(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions) -> ()
 
                 // ファイル出力処理
                 if split_buff.len() > 0 {
-                     write_buf_file.write_all(&split_buff as &[u8]).unwrap();
-                }
+
+                    write_buf_file.write_all(&split_buff as &[u8]).unwrap();
+
+                    // バッファーフラッシュしてファイルに書き込み
+                    match write_buf_file.flush() {
+                        Ok(_) => {},
+                        Err(_) => { error!("write_buf_file.flush Error"); },
+                    };
+                };
             };
 
             // リターン情報

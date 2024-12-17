@@ -334,7 +334,7 @@ pub fn channel_type(channel: String) -> (String, IoctlFreq) {
     if channel.to_uppercase().starts_with("BS") {
         let channel_info = channel.to_uppercase().to_string();
         let channel_info: Vec<&str> = channel_info.split('_').collect();
-        debug!("channel_info = {:?}",channel_info);
+        debug!("channel_type channel_info = {:?}",channel_info);
 
         if (1..=23).contains(&channel_info[0].replace("BS","").parse::<i32>().unwrap()) {
             channel_type = "BS".to_string();
@@ -403,7 +403,7 @@ pub fn channel_type(channel: String) -> (String, IoctlFreq) {
         Err(_) => { }
     };
 
-    debug!("channel type,num,slot = {},{},{}", channel_type, channel_num, slot_num);
+    debug!("channel_type channel type,num,slot = {},{},{}", channel_type, channel_num, slot_num);
     // リターン情報
     (channel_type, IoctlFreq {ch: channel_num, slot: slot_num})
 
@@ -524,7 +524,7 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
     let mut sp = split_startup(&command_opt.sid_list);
 
     // 出力ファイルの作成＆オープン
-    let mut outfile = BufWriter::new(File::create(command_opt.outfile.to_string()).unwrap());
+    let mut outfile = BufWriter::with_capacity(CAP, File::create(command_opt.outfile.to_string()).unwrap());
 
     // 録画開始時刻の取得
     let start_time = SystemTime::now();
@@ -559,7 +559,7 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
                     loop_exit2.store(true, Ordering::Release);
                 },
                 SIGUSR1 => {
-                    debug!("SIGUSR1 received. cleaning up...");
+                    debug!("recording SIGUSR1 received. cleaning up...");
                     loop_exit2.store(true, Ordering::Release);
                 },
                 SIGUSR2 => {
@@ -636,12 +636,12 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
                     let write_buffer = if command_opt.use_splitter == true {
                         
                         if result != TSS_SUCCESS && split_buff.len() > 0 {
-                            debug!("split_ts failed");
+                            debug!("recording split_ts failed split_buff.len={}", split_buff.len());
                         }
                             
                         // ts splitter処理時のバッファ作成
                         let buffer: &[u8] = &split_buff;
-                        //debug!("buffer.len={}", buffer.len());
+                        //debug!("recording buffer.len={}", buffer.len());
 
                         // リターン情報
                         buffer
@@ -656,8 +656,16 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
 
                     // ファイル出力
                     if write_buffer.len() > 0 {
+
                         outfile.write_all(write_buffer).unwrap();
-                        //debug!("write_buffer.len={}", write_buffer.len());
+                        //debug!("recording write_buffer.len={}", write_buffer.len());
+
+                        // バッファーフラッシュしてファイルに書き込み
+                        match outfile.flush() {
+                            Ok(_) => { },
+                            Err(_) => { error!("write_buf_file.flush Error"); },
+                        };
+
                     }
 
                 }
@@ -701,7 +709,7 @@ pub fn tuner_device(device: &String, channel: &String) -> (String, Result<fs::Fi
 
     // チャンネル情報からチャンネルタイプ,チャンネル番号,Slot番号の設定
     let (channel_type, _freq) = channel_type(channel.to_string());
-    debug!("channel_type = {}", channel_type.to_string());
+    debug!("tuner_device channel_type = {}", channel_type.to_string());
 
     // チャンネルタイプからデバイステーブルの設定
     let tuner = match &channel_type[..] {
@@ -718,21 +726,18 @@ pub fn tuner_device(device: &String, channel: &String) -> (String, Result<fs::Fi
 
         // チャンネルテーブルの配列数分ループ
         for i in 0..tuner.len() {
+
             // チューナーデバイスファイルの存在チェック
             if Path::new(tuner[i]).exists() {
-                debug!("dev={}",tuner[i]);
+                debug!("tuner_device dev={}",tuner[i]);
+
                 // チューナーデバイスファイルのオープン
                 tuner_dev = tuner[i].to_string();
-                //match  File::open(&tuner_dev) {
+
                 match  OpenOptions::new().read(true).open(&tuner_dev) {
+
                     // オープンOKの場合はファイルディスクリプターをリターン
                     Ok(file) => {
-                        //match lock_file(&file,None,Some(FcntlLockType::Read)){
-                        //    Ok(true) => debug!("Lock acuired!"),
-                        //    Ok(false) => debug!("Could not acquire lock!"),
-                        //    Err(err) => error!("Error: {:?}", err),
-                        //}
-
                         // ファイルシステムSync(複数プロセスの同時オープン対応)
                         match file.sync_all() {
                             // エラーなしの場合
@@ -746,7 +751,7 @@ pub fn tuner_device(device: &String, channel: &String) -> (String, Result<fs::Fi
                     // オープンNGの場合はループを再開
                     Err(_err) => {
                         drop(tuner_dev.to_string());
-                        debug!("{} not open continue", tuner_dev);
+                        debug!("tuner_device {} not open continue", tuner_dev);
                         continue
                     },
                 };
@@ -779,11 +784,11 @@ pub fn tune(device: &String, file: &File, channel: &String, lnb: &u64) -> () {
 
     // チューナーデバイスのファイルディスクリプタ作成
     let fd = file.as_raw_fd();
-    debug!("tuner fd = {}", fd);
+    debug!("tune tuner fd = {}", fd);
 
     // チャンネル情報からチャンネルタイプ,チャンネル番号,Slot番号の設定
     let (channel_type, freq) = channel_type(channel.to_string());
-    debug!("node = {} , slot = {}", freq.ch, freq.slot);
+    debug!("tune node = {} , slot = {}", freq.ch, freq.slot);
 
     // LNB設定処理
     let errno = match lnb {
@@ -800,7 +805,7 @@ pub fn tune(device: &String, file: &File, channel: &String, lnb: &u64) -> () {
         _ => { 0 },
     };
     if errno < 0 { warn!("Power on LNB failed: {}", device) };
-    debug!("Freq = {},{}", freq.ch, freq.slot);
+    debug!("tune Freq = {},{}", freq.ch, freq.slot);
 
     // チャンネル設定
     let errno = unsafe { set_ch(fd,&[freq]).unwrap() };

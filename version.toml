@@ -1,4 +1,4 @@
 [versions]
-recpt3 = "1.0.0"
+recpt3 = "1.0.3"
 checksignal = "1.0.0"
-ts_splitter = "1.0.0"
+ts_splitter = "1.0.2"
