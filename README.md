@@ -12,10 +12,13 @@
 ※ドライバー、本家やその他分家のものをお使い下さい。  
  PT1/PT2：http://sourceforge.jp/projects/pt1dvr/  
  PT3：https://github.com/m-tsudo/pt3  
-  
+ px4_drv（本家が更新停止状態なの更新を引き継いだフォーク版）：https://github.com/tsukumijima/px4_drv
+ 
 libarib25は以下のものをお使い下さい。  
  libarib25：https://github.com/stz2012/libarib25  
 ※機能統合版(https://github.com/tsukumijima/libaribb25) を使う場合は関数が増えいるため、arib25.rsのARIB_STD_B25構造体のコメントを外してください。（テストはしてません）  
+
+アースソフトPT3 と Plex PX-Q3PE5で動作確認しています。
 
 ## recpt3：録画コマンド
     recpt3 [--b25 [--round N] [--strip] [--EMM]] [--http portnumber] [--device devicefile] [--lnb voltage] [--sid SID1,SID2,...] channel rectime outfile
@@ -27,7 +30,7 @@ recpt1と同様に、デバイス指定なしの場合は利用可能なデバ�
 詳しいオプションは「checksignal --help」を参照してください。  
 
 ## ts_splitter：MPEG2-TS SID分離コマンド
-    ts_splitter --sid SID1,SID2,... infile ouitfile
+    ts_splitter --sid SID1,SID2,... infile outfile
 詳しいオプションは「ts_splitter --help」を参照してください。  
 
 # ビルド
