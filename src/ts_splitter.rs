@@ -27,7 +27,7 @@ use crate::arib_b25::{ARIB_STD_B25, ARIB_STD_B25_BUFFER, B_CAS_CARD};
 use crate::commands::{PROGRAM_TS_SPLITTER, TRUE, FALSE};
 use crate::commands::{CommanLineOpt, DecoderOptions};
 use crate::decoder::{b25_startup, b25_decode, b25_shutdown};
-use crate::ts_splitter_core::{split_startup, split_select, split_ts, TSS_ERROR, TSS_SUCCESS};
+use crate::ts_splitter_core::{split_startup, split_select, split_ts, TSS_SUCCESS};
 use crate::tuner::CAP;
 
 pub const VERSION: &str = env!("VERSION_TS_SPLITTER");
