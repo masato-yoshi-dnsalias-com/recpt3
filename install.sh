@@ -8,3 +8,6 @@ install target/release/checksignal /usr/local/bin
 
 cargo build --release --bin ts_splitter
 install target/release/ts_splitter /usr/local/bin
+
+cargo build --release --bin drop_check
+install target/release/drop_check /usr/local/bin

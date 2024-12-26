@@ -25,7 +25,7 @@ mod tuner;
 
 use crate::arib_b25::{ARIB_STD_B25, ARIB_STD_B25_BUFFER, B_CAS_CARD};
 use crate::commands::{PROGRAM_TS_SPLITTER, TRUE, FALSE};
-use crate::commands::{CommanLineOpt, DecoderOptions};
+use crate::commands::{DecoderOptions};
 use crate::decoder::{b25_startup, b25_decode, b25_shutdown};
 use crate::ts_splitter_core::{split_startup, split_select, split_ts, TSS_SUCCESS};
 use crate::tuner::CAP;
@@ -40,24 +40,23 @@ pub fn show_usage(program: &str, opts: &Options) {
 
 }
 
+// struct CommanLineOpt
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct CommanLineOpt {
+    pub _program: String,
+    pub use_b25: bool,
+    pub sid_list: String,
+    pub use_splitter: bool,
+    pub infile: String,
+    pub outfile: String,
+}
+
 pub(crate) fn command_line_check(program: &str) -> (CommanLineOpt, DecoderOptions) {
 
     let mut use_b25: bool = false;
-    //let mut use_bell: bool = false;
-    //let mut use_udp: bool = false;
-    let use_http: bool = false;
-    let http_port: u16 = 0;
     let mut use_splitter: bool = false;
-    //let mut host_to: String = "".to_string();
-    //let mut port_to: u16 = 0;
-    let device: String = "".to_string();
     let mut sid_list: String = "".to_string();
-    let use_round: bool = false;
-    let use_lnb: bool = false;
-    let lnb: u64 = 0;
-    let use_device: bool = false;
-    let channel: String = "".to_string();
-    let duration: u64 = 0;
     let mut _infile: String = "".to_string();
     let mut _outfile: String = "".to_string();
 
@@ -143,21 +142,8 @@ pub(crate) fn command_line_check(program: &str) -> (CommanLineOpt, DecoderOption
         CommanLineOpt {
             _program: program.to_string(),
             use_b25: use_b25,
-            //use_bell: use_bell,
-            //use_udp: use_udp,
-            _use_http: use_http,
-            _http_port: http_port,
-            //host_to: host_to.to_string(),
-            //port_to: port_to,
-            device: device.to_string(),
             sid_list: sid_list.to_string(),
             use_splitter: use_splitter,
-            _use_round: use_round,
-            _use_lnb: use_lnb,
-            _lnb: lnb,
-            _use_device: use_device,
-            channel: channel,
-            duration: duration,
             infile: _infile.to_string(),
             outfile: _outfile.to_string(),
         },
@@ -280,6 +266,7 @@ fn ts_split(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions) -> ()
         }
     });
 
+    // プログレスバー処理の初期化
     let pb = ProgressBar::new(file_size);
     pb.set_style(ProgressStyle::default_bar()
         .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) \n {msg}")
@@ -376,7 +363,9 @@ fn ts_split(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions) -> ()
         };
     }
 
+    // プログレスバー終了メッセージ
     pb.finish_with_message("正常終了しました。");
+
     // B-CASリーダーシャットダウン
     if command_opt.use_b25 == true {
         unsafe { b25_shutdown(dec, bcas) };

@@ -237,7 +237,7 @@ struct BsChannel {
 }
 
 // BSチャンネル一覧
-const BS_CHANNELS: [BsChannel; 32] = [
+const BS_CHANNELS: [BsChannel; 31] = [
     BsChannel{channel: 151, set_freq:  0, slot: 0}, // 151ch：BS朝日
     BsChannel{channel: 161, set_freq:  0, slot: 1}, // 161ch：BS-TBS
     BsChannel{channel: 171, set_freq:  0, slot: 2}, // 171ch：BSテレ東
@@ -248,13 +248,12 @@ const BS_CHANNELS: [BsChannel; 32] = [
     BsChannel{channel: 211, set_freq:  4, slot: 0}, // 211ch：BS11イレブン
     BsChannel{channel: 200, set_freq:  4, slot: 1}, // 200ch：スター・チャンネル1
     BsChannel{channel: 222, set_freq:  4, slot: 2}, // 222ch：BS12トゥエルビ
-    BsChannel{channel: 231, set_freq:  5, slot: 0}, // 231ch：放送大学ex
-    BsChannel{channel: 232, set_freq:  5, slot: 0}, // 232ch：放送大学on
-    BsChannel{channel: 531, set_freq:  5, slot: 0}, // 531ch：放送大学ラジオ
-    BsChannel{channel: 251, set_freq:  5, slot: 1}, // 251ch：BS釣りビジョン
     BsChannel{channel: 141, set_freq:  6, slot: 0}, // 141ch：BS日テレS
     BsChannel{channel: 181, set_freq:  6, slot: 1}, // 181ch：BSフジ
     BsChannel{channel: 236, set_freq:  6, slot: 2}, // 236ch：BSアニマックス
+    BsChannel{channel: 231, set_freq:  6, slot: 2}, // 231ch：放送大学キャンパスex
+    BsChannel{channel: 232, set_freq:  6, slot: 2}, // 232ch：放送大学キャンパスon
+    BsChannel{channel: 233, set_freq:  6, slot: 2}, // 531ch：放送大学ラジオ
     BsChannel{channel: 101, set_freq:  7, slot: 0}, // 101ch：NHKBS1
     BsChannel{channel: 102, set_freq:  7, slot: 0}, // 102ch：NHKBS1
     BsChannel{channel: 201, set_freq:  7, slot: 1}, // 201ch：スター・チャンネル2
@@ -293,17 +292,16 @@ pub(crate)fn show_channels() {
     eprintln!("BS01_1: BS-TB");
     eprintln!("BS01_2: BSテレ東");
     eprintln!("BS03_0: WOWOWプライム");
-    eprintln!("BS03_1: NHKBSプレミアム");
+    eprintln!("BS13_1: BSアニマックス");
+    eprintln!("BS13_2: BS釣りビジョン");
     eprintln!("BS05_0: WOWOWライブ");
     eprintln!("BS05_1: WOWOWシネマ");
     eprintln!("BS09_0: BS11イレブン");
     eprintln!("BS09_1: スターチャンネル1");
     eprintln!("BS09_2: BS12トゥエルビ");
-    eprintln!("BS11_0: 放送大学");
-    eprintln!("BS11_1: BS釣りビジョン");
     eprintln!("BS13_0: BS日テレ");
     eprintln!("BS13_1: BSフジ");
-    eprintln!("BS13_2: BSアニマックス");
+    eprintln!("BS13_2: 放送大学");
     eprintln!("BS15_0: NHKBS1");
     eprintln!("BS15_1: スターチャンネル2/3");
     eprintln!("BS19_0: J SPORTS 4");

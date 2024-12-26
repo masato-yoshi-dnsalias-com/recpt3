@@ -22,7 +22,7 @@ mod ffi;
 mod ts_splitter_core;
 mod tuner;
 
-use crate::commands::{PROGRAM_CHECKSIGNAL, FALSE, CommanLineOpt, DecoderOptions};
+use crate::commands::{PROGRAM_CHECKSIGNAL};
 use crate::tuner::{channel_type, signal_get, show_channels, tuner_device};
 
 pub const VERSION: &str = env!("VERSION_CHECKSIGNAL");
@@ -35,33 +35,26 @@ pub fn show_usage(program: &str, opts: &Options) {
 
 }
 
-// コマンドラインオプションの判定処理
-pub(crate) fn command_line_check(program: &str) -> (CommanLineOpt, DecoderOptions) {
+// struct CommanLineOpt
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct CommanLineOpt {
+    pub _program: String,
+    pub device: String,
+    pub _use_lnb: bool,
+    pub _lnb: u64,
+    pub _use_device: bool,
+    pub channel: String,
+}
 
-    let use_b25: bool = false;
-    //let mut use_bell: bool = false;
-    //let mut use_udp: bool = false;
-    let use_http: bool = false;
-    let http_port: u16 = 0;
-    let use_splitter: bool = false;
-    //let mut host_to: String = "".to_string();
-    //let mut port_to: u16 = 0;
+// コマンドラインオプションの判定処理
+pub(crate) fn command_line_check(program: &str) -> CommanLineOpt {
+
     let mut device: String = "".to_string();
-    let sid_list: String = "".to_string();
-    let use_round: bool = false;
     let mut use_lnb: bool = false;
     let mut lnb: u64 = 0;
     let mut use_device: bool = false;
     let mut _channel: String = "".to_string();
-    let duration: u64 = 0;
-    let infile: String = "".to_string();
-    let outfile: String = "".to_string();
-
-    let dopt = DecoderOptions {
-        round: 4,
-        strip: FALSE,
-        emm: FALSE,
-    };
 
     // 実行時に与えられた引数をargs: Vec<String>に格納する
     let args: Vec<String> = env::args().collect();
@@ -135,34 +128,14 @@ pub(crate) fn command_line_check(program: &str) -> (CommanLineOpt, DecoderOption
         },
     };
     // リターン情報を設定
-    (
-        CommanLineOpt {
-            _program: program.to_string(),
-            use_b25: use_b25,
-            //use_bell: use_bell,
-            //use_udp: use_udp,
-            _use_http: use_http,
-            _http_port: http_port,
-            //host_to: host_to.to_string(),
-            //port_to: port_to,
-            device: device.to_string(),
-            sid_list: sid_list.to_string(),
-            use_splitter: use_splitter,
-            _use_round: use_round,
-            _use_lnb: use_lnb,
-            _lnb: lnb,
-            _use_device: use_device,
-            channel: _channel,
-            duration: duration,
-            infile: infile.to_string(),
-            outfile: outfile.to_string(),
-        },
-        DecoderOptions {
-            round: dopt.round,
-            strip: dopt.strip,
-            emm: dopt.emm,
-        }
-    )
+    CommanLineOpt {
+        _program: program.to_string(),
+        device: device.to_string(),
+        _use_lnb: use_lnb,
+        _lnb: lnb,
+        _use_device: use_device,
+        channel: _channel,
+    }
 }
 
 
@@ -196,7 +169,7 @@ fn main() {
 
     // コマンドラインオプションチェック
     let program = PROGRAM_CHECKSIGNAL;
-    let (command_opt, _dopt) = command_line_check(program);
+    let command_opt = command_line_check(program);
 
     // チャンネル情報からチャンネルタイプ,チャンネル番号,Slot番号の設定
     let (channel_type, freq) = channel_type(command_opt.channel.to_string());

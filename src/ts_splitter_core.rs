@@ -18,8 +18,8 @@ pub struct PmtVersion {
 
 #[derive(Debug, Clone)]
 pub struct Splitter {
-    pids: [u16; MAX_PID],
-    pmt_pids: [u16; MAX_PID],
+    pub pids: [u16; MAX_PID],
+    pub pmt_pids: [u16; MAX_PID],
     pat: [u8; LENGTH_PACKET],
     sid_list: String,
     pat_count: u8,
@@ -318,7 +318,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
             let service_id: i16 = ((data[cnt] as i16) << 8) + data[cnt + 1] as i16;
             avail_sids.push(service_id);
             avail_pmts.push(pid);
-            debug!("analyze_pat service_id[{}] = {:x} , pid = {:x}", index, service_id, pid);
+            debug!("analyze_pat service_id[{}] = 0x{:04x} , pid = 0x{:04x}", index, service_id, pid);
 
             cnt += 4;
 
@@ -354,7 +354,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("analyze_pat pid={:x} , service_id={} \"hd or sd1\"", pid, service_id);
+                        debug!("analyze_pat pid=0x{:04x} , service_id=0x{:04x} \"hd or sd1\"", pid, service_id);
                     },
 
                     // SD2
@@ -365,7 +365,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("analyze_pat pid={:x} , service_id={} \"sd2\"", pid, service_id);
+                        debug!("analyze_pat pid=0x{:04x} , service_id=0x{:04x} \"sd2\"", pid, service_id);
                     },
 
                     // SD3
@@ -376,7 +376,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("analyze_pat pid={:x} , service_id={} \"sd3\"", pid, service_id);
+                        debug!("analyze_pat pid=0x{:04x} , service_id=0x{:04x} \"sd3\"", pid, service_id);
                     },
 
                     // 1SEG
@@ -387,7 +387,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("analyze_pat pid={:x} , service_id={} \"1seg\"", pid, service_id);
+                        debug!("analyze_pat pid=0x{:04x} , service_id=0x{:04x} \"1seg\"", pid, service_id);
                     },
 
                     // 全て
@@ -398,7 +398,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("analyze_pat pid={:x} , service_id={} \"all\"", pid, service_id);
+                        debug!("analyze_pat pid=0x{:04x} , service_id=0x{:04x} \"all\"", pid, service_id);
                     },
                     
                     // EPG
@@ -407,7 +407,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         sp.pids[0x12] = 1;
                         sp.pids[0x23] = 1;
                         sp.pids[0x29] = 1;
-                        debug!("analyze_pat pid={:x} , service_id={} \"epg\"", pid, service_id);
+                        debug!("analyze_pat pid=0x{:04x} , service_id=0x{:04x} \"epg\"", pid, service_id);
                     },
 
                     // EPG1SEG
@@ -415,7 +415,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         sp.pids[0x11] = 1;
                         sp.pids[0x26] = 1;
                         sp.pids[0x27] = 1;
-                        debug!("analyze_pat pid={:x} , service_id={} \"epg1seg\"", pid, service_id);
+                        debug!("analyze_pat pid=0x{:04x} , service_id=0x{:04x} \"epg1seg\"", pid, service_id);
                     },
 
                     // その他
@@ -426,7 +426,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                         pid_pos.push(cnt);
                         sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                         sp.pmt_retain += 1;
-                        debug!("analyze_pat pid={:x} , service_id={} \"\"", pid, service_id);
+                        debug!("analyze_pat pid=0x{:04x} , service_id=0x{:04x} \"\"", pid, service_id);
                     },
                     _ => {
                         match sid.parse::<i16>() {
@@ -438,7 +438,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
                                 pid_pos.push(cnt);
                                 sp.pmt_version.pid[sp.pmt_retain as usize] = pid;
                                 sp.pmt_retain += 1;
-                                debug!("analyze_pat pid={:x} , service_id={} \"{}\"", pid, service_id, sid);
+                                debug!("analyze_pat pid=0x{:04x} , service_id=0x{:04x} \"{}\"", pid, service_id, sid);
                                 };
                             },
                             Err(_err) => {
@@ -457,21 +457,21 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
         let mut available_sid: String = "".to_string();
         for avail_sid in avail_sids {
             //available_sid = avail_sid.to_digit().unwrap();
-            available_sid.push_str(&*format!("{} ",avail_sid as u16));
+            available_sid.push_str(&*format!("0x{:04x} ",avail_sid as u16));
         };
         info!("Available sid = {}",available_sid);
 
         // chosen sidの編集
         let mut chosen_sids = "".to_string();
         for chosen in chosen_sid {
-            chosen_sids.push_str(&*format!("{} ",chosen as u16));
+            chosen_sids.push_str(&*format!("0x{:04x} ",chosen as u16));
         };
         info!("Chosen sid    = {}", chosen_sids);
 
         // available pmt編集
         let mut available_pmt: String = "".to_string();
         for avail_pmt in avail_pmts {
-            available_pmt.push_str(&*format!("0x{:03x} ",avail_pmt));
+            available_pmt.push_str(&*format!("0x{:04x} ",avail_pmt));
         }
         info!("Available PMT = {}\r", available_pmt);
 
@@ -546,7 +546,7 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
     // PIDの取得
     let pid = get_pid(&data[..]);
 
-    debug!("Called analyze_pmt pid={:x}", pid);
+    debug!("Called analyze_pmt pid=0x{:04x}", pid);
 
     // PES開始インジケータ
     if data[1] & 0x40 == 0x40  {
@@ -645,7 +645,7 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
     }
 
     sp.section_remain[pid as usize] -= nall;
-    debug!("analyze_pmt sp.section_remain[{}]={}", pid, sp.section_remain[pid as usize]);
+    debug!("analyze_pmt sp.section_remain[0x{:04x}]={}", pid, sp.section_remain[pid as usize]);
 
     if sp.section_remain[pid as usize] > 0 {
 

@@ -5,6 +5,8 @@ pub const PROGRAM_CHECKSIGNAL: &str = "checksignal";
 #[allow(dead_code)]
 pub const PROGRAM_TS_SPLITTER: &str = "ts_splitter";
 #[allow(dead_code)]
+pub const PROGRAM_DROP_CHECK: &str = "drop_check";
+#[allow(dead_code)]
 pub const TRUE: i32 = 1;
 #[allow(dead_code)]
 pub const FALSE: i32 = 0;
