@@ -473,7 +473,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
         for avail_pmt in avail_pmts {
             available_pmt.push_str(&*format!("0x{:04x} ",avail_pmt));
         }
-        info!("Available PMT = {}\r", available_pmt);
+        info!("Available PMT = {}\n", available_pmt);
 
         // リターン情報
         result = recreate_pat(&mut sp, &data, &pid_pos);

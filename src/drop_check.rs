@@ -190,6 +190,8 @@ fn drop_check(command_opt: &mut CommanLineOpt) -> () {
 
                     // パケットドロップチェック
                     if sp.pmt_pids[pid] > 0 && continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] { 
+                    //if continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] &&
+                    //    continuity_counter != 0 && next_continuity_counter[pid] != 1 { 
 
                         warn!("パケットドロップ PID=0x{:04x} , continuity_counter={} , next_continuity_counter={}\n",
                             pid, continuity_counter, next_continuity_counter[pid]);
@@ -232,7 +234,7 @@ fn drop_check(command_opt: &mut CommanLineOpt) -> () {
 
         if sp.pmt_pids[cnt] != 0 {
 
-            debug!("sp.pmt_pids[{}]={}", cnt, sp.pmt_pids[cnt])
+            debug!("sp.pmt_pids[0x{:04x}]={}", cnt, sp.pmt_pids[cnt])
 
         };
 
