@@ -56,6 +56,9 @@ pub fn http_daemon(command_opt: CommanLineOpt, decoder_opt: DecoderOptions) -> (
                 let mut command_opt = command_opt.clone();
                 let decoder_opt = decoder_opt.clone();
 
+                // スレッド起動まで1秒スリープ(デバイスファイルの空きが1つの場合にエラーになるのを回避するため)
+                std::thread::sleep(Duration::from_secs_f64(1.0).into());
+
                 // コネクション受信スレッド起動
                 std::thread::spawn(move || {
                     response_stream(&mut command_opt, &decoder_opt, stream);
@@ -134,7 +137,8 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                 };
 
                 // チューナーデバイスの検索
-                let (device, file) = tuner_device(&"".to_string(), &channel.to_string());
+                //let (device, file) = tuner_device(&"".to_string(), &channel.to_string());
+                let (device, file) = tuner_device(&command_opt.device, &channel.to_string());
 
                 // チューナーデバイスが見つからない場合はリターン
                 if device == "" {

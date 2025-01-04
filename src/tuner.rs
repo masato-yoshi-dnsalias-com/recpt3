@@ -30,7 +30,7 @@ use crate::decoder::{b25_startup, b25_decode, b25_shutdown};
 use crate::ts_splitter_core::{split_startup, split_select, split_ts, TSS_SUCCESS};
 
 // BSデバイスファイル名
-const BSDEV: [&str; 88] = [
+const BSDEV: [&str; 92] = [
     "/dev/pt1video1",
     "/dev/pt1video0",
     "/dev/pt1video5",
@@ -51,6 +51,10 @@ const BSDEV: [&str; 88] = [
     "/dev/px4video1",
     "/dev/px4video4",
     "/dev/px4video5",
+    "/dev/px4video8",
+    "/dev/px4video9",
+    "/dev/px4video12",
+    "/dev/px4video13",
     "/dev/asv52201",
     "/dev/asv52200",
     "/dev/asv52205",
@@ -124,7 +128,7 @@ const BSDEV: [&str; 88] = [
 ];
 
 // 地上波デバイスファイル名
-const ISDB_T_DEV: [&str; 88] = [
+const ISDB_T_DEV: [&str; 92] = [
     "/dev/pt1video2",
     "/dev/pt1video3",
     "/dev/pt1video6",
@@ -145,6 +149,10 @@ const ISDB_T_DEV: [&str; 88] = [
     "/dev/px4video3",
     "/dev/px4video6",
     "/dev/px4video7",
+    "/dev/px4video10",
+    "/dev/px4video11",
+    "/dev/px4video14",
+    "/dev/px4video15",
     "/dev/asv52202",
     "/dev/asv52203",
     "/dev/asv52206",

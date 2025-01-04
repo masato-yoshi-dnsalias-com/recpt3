@@ -1,5 +1,5 @@
 [versions]
-recpt3 = "1.0.4"
+recpt3 = "1.1.0"
 checksignal = "1.0.2"
 ts_splitter = "1.0.4"
 drop_check = "1.0.0"
