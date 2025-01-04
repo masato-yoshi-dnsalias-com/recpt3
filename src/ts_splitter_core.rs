@@ -577,7 +577,7 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
         while p < n {
 
             // data.lenを超える場合は次を処理
-            if data.len() <= p.try_into().unwrap() {
+            if data.len() < p.try_into().unwrap() {
                 debug!("analyze_pmt while break");
                 break;
             };
