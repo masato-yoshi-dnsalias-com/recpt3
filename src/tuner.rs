@@ -27,7 +27,7 @@ use crate::arib_b25::{ARIB_STD_B25, ARIB_STD_B25_BUFFER, B_CAS_CARD};
 use crate::commands::{CommanLineOpt, DecoderOptions, PROGRAM_RECPT};
 //use crate::commands::TRUE;
 use crate::decoder::{b25_startup, b25_decode, b25_shutdown};
-use crate::ts_splitter_core::{split_startup, split_select, split_ts, TSS_SUCCESS};
+use crate::ts_splitter_core::{LENGTH_PACKET, MAX_PID, get_pid, read_ts, split_startup, split_select, split_ts, TSS_SUCCESS};
 
 // BSデバイスファイル名
 const BSDEV: [&str; 92] = [
@@ -521,6 +521,8 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
         // true以外は変数初期化のみ
         _ => (-1, 0 as *mut ARIB_STD_B25, 0 as *mut B_CAS_CARD),
     };
+
+    // BCAS初期化エラー時はB25デコードしない
     if result < 0  && command_opt.use_b25 == true {
         command_opt.use_b25 = false;
         error!("Disabled B25...");
@@ -577,6 +579,11 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
         }
     });
 
+    // パケット巡回カウンター変数の作成
+    let mut continuity_counter: i32;
+    let mut continuity_counter_flag: [i32; MAX_PID] = [0; MAX_PID];
+    let mut next_continuity_counter: [i32; MAX_PID] = [0; MAX_PID];
+
     // 録画ループ（録画時間が経過するまでループ）
     rec_time = {
         loop {
@@ -584,6 +591,40 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
             // バッファへ読み込み、ファイル出力
             let length = {
                 let read_buffer = data_reader.fill_buf().unwrap();
+
+                // パケットドロップチェック用のデータバッファ作成
+                let mut data_buff: Vec<u8> = vec![0; read_buffer.len()];
+                data_buff[..read_buffer.len()].copy_from_slice(&read_buffer[..read_buffer.len()]);
+                let _result = read_ts(&mut sp, &mut data_buff);
+
+                // パケットドロップチェック用のバッファ処理インデックス
+                let mut index = 0;
+
+                // バッファ終了までループ(パケットドロップチェック)
+                while index < read_buffer.len() {
+
+                    // PID取得
+                    let pid = get_pid(&read_buffer[index..index+LENGTH_PACKET - 1]) as usize;
+
+                    // パケット巡回カウンターの作成
+                    continuity_counter = (read_buffer[index + 3] & 0x0f) as i32;
+
+                    // パケットドロップチェック
+                    if sp.pmt_pids[pid] > 0 && continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] {
+
+                        debug!("パケットドロップ PID={}(0x{:04x}) , continuity_counter={} , next_continuity_counter={}\n",
+                            pid, pid, continuity_counter, next_continuity_counter[pid]);
+
+                    };
+
+                    // 次パケット巡回カウンターの計算
+                    next_continuity_counter[pid] = (continuity_counter + 1) & 0x0f;
+                    continuity_counter_flag[pid] = 1;
+
+                    // 次パケットまでインデックス更新
+                    index += 188;
+
+                };
 
                 // リードバッファ作成
                 let b25_buff = ARIB_STD_B25_BUFFER {

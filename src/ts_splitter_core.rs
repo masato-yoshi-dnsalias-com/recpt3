@@ -132,7 +132,7 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
                     else {
                         if sp.pmt_retain != sp.pmt_counter {
                             // 再チェック
-                            debug!("split_ts Call rescan_pid is so.pmt_retain={} != sp.pmt_counter={}", sp.pmt_retain, sp.pmt_counter);
+                            debug!("split_ts Call rescan_pid is sp.pmt_retain={} != sp.pmt_counter={}", sp.pmt_retain, sp.pmt_counter);
                             result = rescan_pid(sp, &buff[in_index..]);
                         }
                     };
@@ -144,10 +144,6 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
                         // Splitバッファー作成
                         split_buff.push(buff[cnt + in_index]);
                     }
-                }
-                else {
-                    // ドロップカウンターカウントアップ
-                    _drop += 1;
                 };
             },
         }
@@ -582,15 +578,10 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
             (data[payload_offset + 11] as i16) + payload_offset as i16 + 12;
         let mut p = payload_offset as i16 + 12;
 
-        debug!("analyze_pmt p={},n={}, data.len={}",p, n, data.len());
+        debug!("analyze_pmt before p={},n={}, data.len={}",p, n, data.len());
 
-        while p < n {
-
-            // data.lenを超える場合は次を処理
-            if data.len() < p.try_into().unwrap() {
-                debug!("analyze_pmt while break");
-                break;
-            };
+        // pがn未満ででかつ、data.lenを未満の場合に処理
+        while p < n && data.len() > n as usize {
 
             let tag: u32 = data[p as usize] as u32;
             let len: u32 = data[p as usize + 1] as u32;
@@ -599,9 +590,13 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
             if tag == 0x09 && len >= 4 && p as u32 + len <= n as u32 {
                 let ca_pid = ((((data[p as usize + 2] as i16) << 8) | data[p as usize + 3] as i16) & 0x1fff) as usize;
                 sp.pids[ca_pid] = mark;
+                debug!("sp.pids[{}(0x{:04x})]=mark",ca_pid, ca_pid)
             }
 
         }
+
+        debug!("analyze_pmt after  p={},n={}, data.len={}",p, n, data.len());
+
     }
     else {
         // セクション先頭が飛んでいる場合
