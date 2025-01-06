@@ -579,7 +579,7 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
         }
     });
 
-    // パケット巡回カウンター変数の作成
+    // パケットドロップチェック用のパケット巡回カウンター変数の作成
     let mut continuity_counter: i32;
     let mut continuity_counter_flag: [i32; MAX_PID] = [0; MAX_PID];
     let mut next_continuity_counter: [i32; MAX_PID] = [0; MAX_PID];
@@ -612,8 +612,9 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
                     // パケットドロップチェック
                     if sp.pmt_pids[pid] > 0 && continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] {
 
-                        debug!("パケットドロップ PID={}(0x{:04x}) , continuity_counter={} , next_continuity_counter={}\n",
-                            pid, pid, continuity_counter, next_continuity_counter[pid]);
+                        let signal = signal_get(&device_file, &channel_type);
+                        debug!("パケットドロップ PID={}(0x{:04x}) , continuity_counter={} , next_continuity_counter={} , signel={}",
+                            pid, pid, continuity_counter, next_continuity_counter[pid], signal);
 
                     };
 

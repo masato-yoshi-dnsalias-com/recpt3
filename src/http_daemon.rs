@@ -9,9 +9,9 @@ use std::time::{Duration, SystemTime};
 use crate::arib_b25::{ARIB_STD_B25, ARIB_STD_B25_BUFFER, B_CAS_CARD};
 use crate::commands::{CommanLineOpt, DecoderOptions};
 use crate::decoder::{b25_startup, b25_decode, b25_shutdown};
-use crate::ts_splitter_core::{split_startup, split_select, split_ts, TSS_SUCCESS};
+use crate::ts_splitter_core::{LENGTH_PACKET, MAX_PID, get_pid, read_ts, split_startup, split_select, split_ts, TSS_SUCCESS};
 use crate::tuner;
-use crate::tuner::{CAP, channel_type, start_rec, tuner_device, tune};
+use crate::tuner::{CAP, channel_type, signal_get, start_rec, tuner_device, tune};
 
 pub fn http_daemon(command_opt: CommanLineOpt, decoder_opt: DecoderOptions) -> () {
 
@@ -185,11 +185,51 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                 // 出力用のバッファ作成
                 let mut data_reader = BufReader::with_capacity(CAP, &device_file);
 
+                // パケットドロップチェック用のパケット巡回カウンター変数の作成
+                let mut continuity_counter: i32;
+                let mut continuity_counter_flag: [i32; MAX_PID] = [0; MAX_PID];
+                let mut next_continuity_counter: [i32; MAX_PID] = [0; MAX_PID];
+
                 loop {
                     // バッファへ読み込み
                     let length = {
                         let read_buffer = data_reader.fill_buf().unwrap();
                         //debug!("response_stream data_reader={:?}",&read_buffer.len());
+
+                        // パケットドロップチェック用のデータバッファ作成
+                        let mut data_buff: Vec<u8> = vec![0; read_buffer.len()];
+                        data_buff[..read_buffer.len()].copy_from_slice(&read_buffer[..read_buffer.len()]);
+                        let _result = read_ts(&mut sp, &mut data_buff);
+
+                        // パケットドロップチェック用のバッファ処理インデックス
+                        let mut index = 0;
+
+                        // バッファ終了までループ(パケットドロップチェック)
+                        while index < read_buffer.len() {
+
+                            // PID取得
+                            let pid = get_pid(&read_buffer[index..index+LENGTH_PACKET - 1]) as usize;
+
+                            // パケット巡回カウンターの作成
+                            continuity_counter = (read_buffer[index + 3] & 0x0f) as i32;
+
+                            // パケットドロップチェック
+                            if sp.pmt_pids[pid] > 0 && continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] {
+
+                                let signal = signal_get(&device_file, &channel_type);
+                                debug!("パケットドロップ PID={}(0x{:04x}) , continuity_counter={} , next_continuity_counter={} signel={}",
+                                    pid, pid, continuity_counter, next_continuity_counter[pid], signal);
+
+                            };
+
+                            // 次パケット巡回カウンターの計算
+                            next_continuity_counter[pid] = (continuity_counter + 1) & 0x0f;
+                            continuity_counter_flag[pid] = 1;
+
+                            // 次パケットまでインデックス更新
+                            index += 188;
+
+                        };
 
                         // リードバッファ作成
                         let b25_buff = ARIB_STD_B25_BUFFER {
