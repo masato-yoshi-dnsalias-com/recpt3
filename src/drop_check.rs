@@ -20,7 +20,8 @@ mod ts_splitter_core;
 mod tuner;
 
 use crate::commands::{PROGRAM_DROP_CHECK};
-use crate::ts_splitter_core::{LENGTH_PACKET, MAX_PID, get_pid, read_ts, split_startup};
+use crate::ts_splitter_core::{LENGTH_PACKET, MAX_PID, get_pid, split_select, split_startup,
+    TSS_ERROR, TSS_SUCCESS};
 use crate::tuner::CAP;
 
 pub const VERSION: &str = env!("VERSION_TS_SPLITTER");
@@ -143,6 +144,7 @@ fn drop_check(command_opt: &mut CommanLineOpt) -> () {
 
     // ts splitterの初期化処理
     let mut sp = split_startup("all");
+    let mut split_select_finish = TSS_ERROR;
 
     // 入力ファイルオープン
     let file = File::open(command_opt.infile.to_string()).unwrap();
@@ -174,22 +176,25 @@ fn drop_check(command_opt: &mut CommanLineOpt) -> () {
                 // データバッファ作成
                 let mut data_buff: Vec<u8> = vec![0; read_buffer.len()];
                 data_buff[..read_buffer.len()].copy_from_slice(&read_buffer[..read_buffer.len()]);
-                let _result = read_ts(&mut sp, &mut data_buff);
+                if split_select_finish != TSS_SUCCESS {
+                    split_select_finish = split_select(&mut sp, &mut data_buff);
+                };
 
                 // バッファ処理インデックス
                 let mut index = 0;
 
                 // バッファ終了までループ
-                while index < read_buffer.len() {
+                while (data_buff.len() as i32 - index as i32 - LENGTH_PACKET as i32) >= 0 {
 
                     // PID取得
-                    let pid = get_pid(&read_buffer[index..index+LENGTH_PACKET - 1]) as usize;
+                    let pid = get_pid(&data_buff[index..index + LENGTH_PACKET - 1]) as usize;
 
                     // パケット巡回カウンターの作成
-                    continuity_counter = (read_buffer[index + 3] & 0x0f) as i32;
+                    continuity_counter = (data_buff[index + 3] & 0x0f) as i32;
 
                     // パケットドロップチェック
-                    if sp.pmt_pids[pid] > 0 && continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] { 
+                    if (sp.pmt_pids[pid] > 0 || (sp.pids[pid] > 0 && pid < 0x100)) &&
+                        continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] {
 
                         warn!("パケットドロップ PID={}(0x{:04x}) , continuity_counter={} , next_continuity_counter={}\n",
                             pid, pid, continuity_counter, next_continuity_counter[pid]);
@@ -201,7 +206,7 @@ fn drop_check(command_opt: &mut CommanLineOpt) -> () {
                     continuity_counter_flag[pid] = 1;
 
                     // 次パケットまでインデックス更新
-                    index += 188;
+                    index += LENGTH_PACKET;
 
                 };
             };

@@ -27,7 +27,8 @@ use crate::arib_b25::{ARIB_STD_B25, ARIB_STD_B25_BUFFER, B_CAS_CARD};
 use crate::commands::{CommanLineOpt, DecoderOptions, PROGRAM_RECPT};
 //use crate::commands::TRUE;
 use crate::decoder::{b25_startup, b25_decode, b25_shutdown};
-use crate::ts_splitter_core::{LENGTH_PACKET, MAX_PID, get_pid, read_ts, split_startup, split_select, split_ts, TSS_SUCCESS};
+use crate::ts_splitter_core::{LENGTH_PACKET, MAX_PID, get_pid, split_startup, split_select, split_ts,
+    TSS_ERROR, TSS_SUCCESS};
 
 // BSデバイスファイル名
 const BSDEV: [&str; 92] = [
@@ -530,6 +531,7 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
 
     // ts splitterの初期化処理
     let mut sp = split_startup(&command_opt.sid_list);
+    let mut split_select_finish = TSS_ERROR;
 
     // 出力ファイルの作成＆オープン
     let mut outfile = BufWriter::with_capacity(CAP, File::create(command_opt.outfile.to_string()).unwrap());
@@ -584,6 +586,12 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
     let mut continuity_counter_flag: [i32; MAX_PID] = [0; MAX_PID];
     let mut next_continuity_counter: [i32; MAX_PID] = [0; MAX_PID];
 
+    // データレシーブカウンター初期化
+    let mut rcount = 0;
+
+    // 録画ストップコマンド実行フラグ
+    let mut stop_command_flag = 0;
+
     // 録画ループ（録画時間が経過するまでループ）
     rec_time = {
         loop {
@@ -592,29 +600,46 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
             let length = {
                 let read_buffer = data_reader.fill_buf().unwrap();
 
-                // パケットドロップチェック用のデータバッファ作成
-                let mut data_buff: Vec<u8> = vec![0; read_buffer.len()];
-                data_buff[..read_buffer.len()].copy_from_slice(&read_buffer[..read_buffer.len()]);
-                let _result = read_ts(&mut sp, &mut data_buff);
+                // use_splitterがfalseの場合に対象PID取得処理をここで実施
+                if command_opt.use_splitter == false {
+                    // パケットドロップチェック用のデータバッファ作成
+                    let mut check_data_buff: Vec<u8> = vec![0; read_buffer.len()];
+                    check_data_buff[..read_buffer.len()].copy_from_slice(&read_buffer[..read_buffer.len()]);
+                    if split_select_finish != TSS_SUCCESS {
+                        split_select_finish = split_select(&mut sp, &mut check_data_buff);
+                    }
+                };
+
+                // データレシーブカウンターアップ
+                rcount += 1;
+
+                // データ長がCAPと違う場合はデバッグ出力
+                if read_buffer.len() != CAP {
+
+                    debug!("録画終了？ (CAP={} , read_buffer.len={})", CAP, read_buffer.len());
+
+                };
 
                 // パケットドロップチェック用のバッファ処理インデックス
                 let mut index = 0;
 
                 // バッファ終了までループ(パケットドロップチェック)
-                while index < read_buffer.len() {
+                while (read_buffer.len() as i32 - index as i32 - LENGTH_PACKET as i32) >= 0 {
 
                     // PID取得
-                    let pid = get_pid(&read_buffer[index..index+LENGTH_PACKET - 1]) as usize;
+                    let pid = get_pid(&read_buffer[index..index + LENGTH_PACKET - 1]) as usize;
 
                     // パケット巡回カウンターの作成
                     continuity_counter = (read_buffer[index + 3] & 0x0f) as i32;
 
                     // パケットドロップチェック
-                    if sp.pmt_pids[pid] > 0 && continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] {
+                    if (sp.pmt_pids[pid] > 0 || (sp.pids[pid] > 0 && pid < 0x100)) &&
+                        continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] {
 
+                        // signal取得
                         let signal = signal_get(&device_file, &channel_type);
-                        debug!("パケットドロップ PID={}(0x{:04x}) , continuity_counter={} , next_continuity_counter={} , signel={}",
-                            pid, pid, continuity_counter, next_continuity_counter[pid], signal);
+                        debug!("パケットドロップ PID={}(0x{:04x}) , continuity_counter={} , next_continuity_counter={} , rcount={} , signel={}",
+                            pid, pid, continuity_counter, next_continuity_counter[pid], rcount, signal);
 
                     };
 
@@ -623,7 +648,7 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
                     continuity_counter_flag[pid] = 1;
 
                     // 次パケットまでインデックス更新
-                    index += 188;
+                    index += LENGTH_PACKET;
 
                 };
 
@@ -660,15 +685,26 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
                 // ts splitter処理
                 if command_opt.use_splitter == true && len > 0 {
 
+                    // buffer.lenチェック
+                    if (buffer.len() % LENGTH_PACKET) != 0 {
+
+                        warn!("buffer.len({})がLENGTH_PACKET({})の倍数ではありません。", buffer.len(), LENGTH_PACKET);
+
+                    }
+
                     // データバッファ作成
                     let mut data_buff: Vec<u8> = vec![0; buffer.len()];
                     data_buff[..buffer.len()].copy_from_slice(&buffer[..buffer.len()]);
 
                     // 処理するsidの取得
-                    result = split_select(&mut sp, &mut data_buff);
+                    if split_select_finish != TSS_SUCCESS {
+
+                        split_select_finish = split_select(&mut sp, &mut data_buff);
+
+                    };
 
                     // sid取得OK時の処理
-                    if result == TSS_SUCCESS {
+                    if split_select_finish == TSS_SUCCESS {
 
                         // sid split処理
                         result = split_ts(&mut sp, &mut data_buff, &mut split_buff);
@@ -727,9 +763,21 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
 
             // 録画時間が経過したらループ終了
             rec_time = SystemTime::now().duration_since(start_time).unwrap().as_secs();
-            //if SystemTime::now().duration_since(start_time).unwrap().as_secs() > command_opt.duration {
+
             if rec_time > command_opt.duration {
-                break rec_time;
+
+                // 録画ストップしデータが読み込まなくなったら終了
+                if stop_command_flag == 1  && length == 0 {
+                    break rec_time;
+                }
+
+                // 録画終了コマンド出力
+                if stop_command_flag == 0 {
+                    debug!("call stop_rec");
+                    unsafe { stop_rec(device_file.as_raw_fd()).unwrap() };
+                };
+                stop_command_flag = 1;
+
             };
 
             // SIGNAL受信
@@ -743,8 +791,7 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
         info!("B25 shutdown");
     };
 
-    // 録画終了コマンド出力
-    unsafe { stop_rec(device_file.as_raw_fd()).unwrap() };
+    // 録画終了情報出力
     info!("Recorded {}sec", rec_time);
 
 }

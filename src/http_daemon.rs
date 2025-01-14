@@ -9,7 +9,8 @@ use std::time::{Duration, SystemTime};
 use crate::arib_b25::{ARIB_STD_B25, ARIB_STD_B25_BUFFER, B_CAS_CARD};
 use crate::commands::{CommanLineOpt, DecoderOptions};
 use crate::decoder::{b25_startup, b25_decode, b25_shutdown};
-use crate::ts_splitter_core::{LENGTH_PACKET, MAX_PID, get_pid, read_ts, split_startup, split_select, split_ts, TSS_SUCCESS};
+use crate::ts_splitter_core::{LENGTH_PACKET, MAX_PID, get_pid, split_startup, split_select, split_ts,
+    TSS_ERROR, TSS_SUCCESS};
 use crate::tuner;
 use crate::tuner::{CAP, channel_type, signal_get, start_rec, tuner_device, tune};
 
@@ -67,7 +68,7 @@ pub fn http_daemon(command_opt: CommanLineOpt, decoder_opt: DecoderOptions) -> (
             },
             // コネクション受信エラー
             Err(e) => {
-                error!("Error: {}", e);
+                error!("Connection Recive Error: {}", e);
             },
         };
 
@@ -96,6 +97,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                 let request  = std::str::from_utf8(&req_buff[..n]).unwrap();
                 let request_line: Vec<&str> = request.lines().collect();
                 debug!("response_stream request={:?}", request_line);
+                
                 
                 // 1行目をパーツ毎に分解
                 let request_line = request_line[0];
@@ -137,7 +139,6 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                 };
 
                 // チューナーデバイスの検索
-                //let (device, file) = tuner_device(&"".to_string(), &channel.to_string());
                 let (device, file) = tuner_device(&command_opt.device, &channel.to_string());
 
                 // チューナーデバイスが見つからない場合はリターン
@@ -176,6 +177,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
 
                 // ts splitterの初期化処理
                 let mut sp = split_startup(&sid);
+                let mut split_select_finish = TSS_ERROR;
                 if sid != "" { command_opt.use_splitter = true; };
 
                 // 録画開始コマンド出力
@@ -196,25 +198,38 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                         let read_buffer = data_reader.fill_buf().unwrap();
                         //debug!("response_stream data_reader={:?}",&read_buffer.len());
 
-                        // パケットドロップチェック用のデータバッファ作成
-                        let mut data_buff: Vec<u8> = vec![0; read_buffer.len()];
-                        data_buff[..read_buffer.len()].copy_from_slice(&read_buffer[..read_buffer.len()]);
-                        let _result = read_ts(&mut sp, &mut data_buff);
+                        // データ長がCAPと違う場合はデバッグ出力
+                        if read_buffer.len() != CAP {
+
+                            debug!("録画終了？ (CAP={} , read_buffer.len={})", CAP, read_buffer.len());
+
+                        };
+
+                        // use_splitterがfalseの場合に対象PID取得処理をここで実施
+                        if command_opt.use_splitter == false {
+                            // パケットドロップチェック用のデータバッファ作成
+                            let mut check_data_buff: Vec<u8> = vec![0; read_buffer.len()];
+                            check_data_buff[..read_buffer.len()].copy_from_slice(&read_buffer[..read_buffer.len()]);
+                            if split_select_finish != TSS_SUCCESS {
+                                split_select_finish = split_select(&mut sp, &mut check_data_buff);
+                            };
+                        };
 
                         // パケットドロップチェック用のバッファ処理インデックス
                         let mut index = 0;
 
                         // バッファ終了までループ(パケットドロップチェック)
-                        while index < read_buffer.len() {
+                        while (read_buffer.len() as i32 - index as i32 - LENGTH_PACKET as i32) >= 0 {
 
                             // PID取得
-                            let pid = get_pid(&read_buffer[index..index+LENGTH_PACKET - 1]) as usize;
+                            let pid = get_pid(&read_buffer[index..index + LENGTH_PACKET - 1]) as usize;
 
                             // パケット巡回カウンターの作成
                             continuity_counter = (read_buffer[index + 3] & 0x0f) as i32;
 
                             // パケットドロップチェック
-                            if sp.pmt_pids[pid] > 0 && continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] {
+                            if (sp.pmt_pids[pid] > 0 || (sp.pids[pid] > 0 && pid < 0x100)) &&
+                                continuity_counter_flag[pid] == 1 && continuity_counter != next_continuity_counter[pid] {
 
                                 let signal = signal_get(&device_file, &channel_type);
                                 debug!("パケットドロップ PID={}(0x{:04x}) , continuity_counter={} , next_continuity_counter={} signel={}",
@@ -227,7 +242,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                             continuity_counter_flag[pid] = 1;
 
                             // 次パケットまでインデックス更新
-                            index += 188;
+                            index += LENGTH_PACKET;
 
                         };
 
@@ -237,6 +252,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                             data: read_buffer.as_ptr() as *mut u8,
                             size: read_buffer.len() as u32,
                         };
+
 
                         // B25デコード処理
                         let (buffer, len) = match command_opt.use_b25 {
@@ -268,10 +284,14 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                             data_buff[..buffer.len()].copy_from_slice(&buffer[..buffer.len()]);
 
                             // 処理するsidの取得
-                            result = split_select(&mut sp, &mut data_buff);
+                            if split_select_finish != TSS_SUCCESS {
+
+                                split_select_finish = split_select(&mut sp, &mut data_buff);
+
+                            };
 
                             // sid取得OK時の処理
-                            if result == TSS_SUCCESS {
+                            if split_select_finish == TSS_SUCCESS {
 
                                 // sid split処理
                                 result = split_ts(&mut sp, &mut data_buff, &mut split_buff);
@@ -315,7 +335,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                                             info!("B25 shutdown");
                                         };
 
-                                        break;
+                                        break read_buffer.len() as u64
                                     },
                                 };
                             };
@@ -334,7 +354,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
 
             },
             Err(e) => {
-                error!("Error2: {}", e);
+                error!("Stream Read Error: {}", e);
                 break;
             },
         }

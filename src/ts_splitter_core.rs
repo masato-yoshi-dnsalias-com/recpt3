@@ -70,7 +70,7 @@ pub fn split_select(mut sp: &mut Splitter, buff: &mut Vec<u8>) -> i32 {
 // TS 分離処理
 pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>) -> i32 {
 
-    //debug!("Called split_ts");
+    //debug!("Called split_ts buff.len={}", buff.len());
     let mut result = TSS_SUCCESS ;
     let length = buff.len();
     let mut in_index = 0;
@@ -81,7 +81,7 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
     while (length as i16 - in_index as i16 - LENGTH_PACKET as i16) >= 0 {
 
         // PID取得
-        let pid = get_pid(&buff[in_index..in_index+LENGTH_PACKET - 1]);
+        let pid = get_pid(&buff[in_index..in_index + LENGTH_PACKET - 1]);
 
         // PID判定
         match pid {
@@ -95,9 +95,8 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
                 }
                 else {
                     sp.pat_count += 1;
-                    if sp.pat_count % 0x10 == 0 {
-                        sp.pat_count -= 0x10;
-                    }
+                    sp.pat_count = sp.pat_count & 0x0f;
+                    sp.pat_count = sp.pat_count | 0x10;
                 }
                 sp.pat[3] = sp.pat_count;
 
@@ -227,14 +226,14 @@ pub fn read_ts(mut sp: &mut Splitter, data: &mut [u8]) -> i32 {
     let mut index = 0;
 
     // バッファエンドまでループ
-    while (length as i16 - index as i16 - LENGTH_PACKET as i16) >= 0 {
+    while (length as i32 - index as i32 - LENGTH_PACKET as i32) >= 0 {
 
         // PID取得
-        let pid = get_pid(&data[index..index+LENGTH_PACKET - 1]);
+        let pid = get_pid(&data[index..index + LENGTH_PACKET - 1]);
 
         if pid == 0x0000 {
             // PAT解析処理
-            result = analyze_pat(&mut sp, &data[index..index+LENGTH_PACKET - 1]);
+            result = analyze_pat(&mut sp, &data[index..index + LENGTH_PACKET]);
             if result != TSS_SUCCESS {
                 return result;
             }
@@ -245,7 +244,7 @@ pub fn read_ts(mut sp: &mut Splitter, data: &mut [u8]) -> i32 {
         if sp.pmt_pids[pid as usize] == 1 {
 
             // PMT解析処理
-            let analyze_result = analyze_pmt(&mut sp, &data[index..index+LENGTH_PACKET - 1], 1);
+            let analyze_result = analyze_pmt(&mut sp, &data[index..index + LENGTH_PACKET], 1);
 
             // 判定正常終了時の処理
             if analyze_result == TSS_SUCCESS {
@@ -253,6 +252,7 @@ pub fn read_ts(mut sp: &mut Splitter, data: &mut [u8]) -> i32 {
                 sp.pmt_counter += 1;
                 data[index + 1] = 0xff;
                 data[index + 2] = 0xff;
+                debug!("read_ts sp.pmt_pids[{}(0x{:04x}]={} , sp.pmt_counter={}", pid, pid, sp.pmt_pids[pid as usize], sp.pmt_counter);
             }
 
         }
@@ -261,11 +261,12 @@ pub fn read_ts(mut sp: &mut Splitter, data: &mut [u8]) -> i32 {
         // pmt_counter と pmt_retain が一致する場合に条件は満たされる
         if sp.pmt_counter == sp.pmt_retain {
             result = TSS_SUCCESS;
+            debug!("read_ts sp.pmt_counter={} , sp.pmt_retain={}", sp.pmt_counter, sp.pmt_retain);
             break;
         }
         else {
             result = TSS_ERROR;
-        }
+        };
 
         // ループカウンタをパケットサイズ数分カウントアップ
         index += LENGTH_PACKET;
@@ -297,14 +298,14 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
     // 
     if sp.pat[0] == 0xff {
 
-        let mut cnt: usize = 13.try_into().unwrap();
+        let mut cnt: usize = 13 as usize;
 
         sp.pmt_retain = 0;
 
         // prescan SID/PMT
-        while (cnt + 4)  <= size.try_into().unwrap() {
+        while (cnt + 4)  <= size as usize {
 
-            let index: usize = (cnt + 1 ).try_into().unwrap();
+            let index: usize = (cnt + 1) as usize;
             let pid = get_pid(&data[index..]);
             if pid == 0x0010 {
                 cnt += 4;
@@ -322,10 +323,10 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
         }
 
         // 対象チャンネル判定
-        cnt = 13.try_into().unwrap();
-        while (cnt + 4)  <= size.try_into().unwrap() {
+        cnt = 13 as usize;
+        while (cnt + 4)  <= size as usize {
 
-            let index: usize = (cnt + 1 ).try_into().unwrap();
+            let index: usize = (cnt + 1) as usize;
             
             // PAT
             let pid = get_pid(&data[index..]);
@@ -484,7 +485,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
         // リターン情報
         result = recreate_pat(&mut sp, &data, &pid_pos);
 
-    }
+    };
 
     result
 
@@ -493,14 +494,14 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
 // 新しいPATの作成
 pub fn recreate_pat(sp: &mut Splitter, data: &[u8], pos: &Vec<usize>) -> i32 {
 
-    debug!("Called recreate_pat");
+    debug!("Called recreate_pat pos={:?}", pos);
 
     let mut crc_data: Vec<u8> = vec![];
 
 
     // CRC32計算データの作成
     // チャンネルによって変わらない部分
-    for cnt in 0..(LENGTH_PAT_HEADER - 3) as usize {
+    for cnt in 0..(LENGTH_PAT_HEADER + 1) as usize {
         crc_data.push(data[cnt]);
     }
 
@@ -516,6 +517,10 @@ pub fn recreate_pat(sp: &mut Splitter, data: &[u8], pos: &Vec<usize>) -> i32 {
             crc_data.push(data[pos_num + cnt]);
         }
     }
+
+    // レングス再計算
+    crc_data[6] = (crc_data[6] & 0xf0) | ((crc_data.len() - 8 ) >> 8) as u8;
+    crc_data[7] = (crc_data.len() - 4 ) as u8;
 
     // CRC32計算
     let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
@@ -550,7 +555,7 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
     let payload_offset: usize;
 
     // PIDの取得
-    let pid = get_pid(&data[..]);
+    let pid = get_pid(&data);
 
     debug!("Called analyze_pmt pid={}(0x{:04x})", pid, pid);
 
@@ -571,6 +576,7 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
         // PCR取得
         let pcr = get_pid(&data[(payload_offset + 7)..]);
         sp.pids[pcr as usize] = mark;
+        debug!("analyze_pmt sp.pids[{}(0x{:04x})]=mark pcr",pcr, pcr);
 
         // ECM
         // ES情報開始点
@@ -580,7 +586,7 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
 
         debug!("analyze_pmt before p={},n={}, data.len={}",p, n, data.len());
 
-        // pがn未満ででかつ、data.lenを未満の場合に処理
+        // pがn未満ででかつ、data.len未満の場合に処理
         while p < n && data.len() > n as usize {
 
             let tag: u32 = data[p as usize] as u32;
@@ -590,7 +596,7 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
             if tag == 0x09 && len >= 4 && p as u32 + len <= n as u32 {
                 let ca_pid = ((((data[p as usize + 2] as i16) << 8) | data[p as usize + 3] as i16) & 0x1fff) as usize;
                 sp.pids[ca_pid] = mark;
-                debug!("sp.pids[{}(0x{:04x})]=mark",ca_pid, ca_pid)
+                debug!("analyze_pmt sp.pids[{}(0x{:04x})]=mark ca_pid",ca_pid, ca_pid)
             }
 
         }
@@ -633,6 +639,7 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
 
             let epid = get_pid(&data[(n as usize)..]);
             sp.pids[epid as usize] = mark;
+            debug!("analyze_pmt sp.pids[{}(0x{:04x})]=mark epid , stream id=0x{:02x}", epid, epid, data[n as usize]);
 
         };
 
@@ -657,7 +664,6 @@ pub fn analyze_pmt(sp: &mut Splitter, data: &[u8], mark: u16) -> i32 {
         debug!("analyze_pmt Return SECTION_CONTINUE");
 
         // リターン情報
-        //return TSS_SUCCESS;
         return SECTION_CONTINUE;
 
     }
