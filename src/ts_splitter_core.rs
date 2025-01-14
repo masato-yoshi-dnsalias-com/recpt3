@@ -94,9 +94,7 @@ pub fn split_ts(mut sp: &mut Splitter, buff: &mut [u8], split_buff: &mut Vec<u8>
                     sp.pat_count = sp.pat[3];
                 }
                 else {
-                    sp.pat_count += 1;
-                    sp.pat_count = sp.pat_count & 0x0f;
-                    sp.pat_count = sp.pat_count | 0x10;
+                    sp.pat_count = ((sp.pat_count + 1) & 0x0f) | 0x10;
                 }
                 sp.pat[3] = sp.pat_count;
 
