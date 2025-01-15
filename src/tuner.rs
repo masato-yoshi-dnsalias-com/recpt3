@@ -750,9 +750,9 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
                             Err(_) => { error!("write_buf_file.flush Error"); },
                         };
 
-                    }
+                    };
 
-                }
+                };
 
                 // リターン情報
                 read_buffer.len()

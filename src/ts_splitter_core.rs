@@ -1,5 +1,5 @@
 use log::{debug, info, warn};
-use crc::{Crc, CRC_32_ISO_HDLC};
+use crc::{Crc, CRC_32_MPEG_2};
 
 pub const MAX_PID: usize = 8192;
 pub const MAX_SERVICES: usize = 50;
@@ -521,8 +521,8 @@ pub fn recreate_pat(sp: &mut Splitter, data: &[u8], pos: &Vec<usize>) -> i32 {
     crc_data[7] = (crc_data.len() - 4 ) as u8;
 
     // CRC32計算
-    let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
-    let checksum = crc.checksum(&crc_data[..]);
+    let crc = Crc::<u32>::new(&CRC_32_MPEG_2);
+    let checksum = crc.checksum(&crc_data[5..]);
 
     // CRCを追加
     crc_data.push((checksum >> 24 & 0xff) as u8);
