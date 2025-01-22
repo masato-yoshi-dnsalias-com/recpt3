@@ -1,11 +1,14 @@
 extern crate getopts;
+extern crate daemonize;
 
 use chrono::Local;
 use colored::*;
+use daemonize::Daemonize;
 use env_logger::{Builder, Env, Target};
 use getopts::Options;
 use log::info;
 use std::env;
+use std::fs::File;
 use std::io::Write;
 use std::process;
 
@@ -286,8 +289,27 @@ fn main() {
 
     // http daemon処理
     if opt._use_http {
-        http_daemon(opt.clone(), dopt.clone());
-    }
+
+        // Daemon起動時のstdout,stderrファイルを設定
+        let stdout = File::create(format!("/tmp/{}.daemon.out", program)).unwrap();
+        let stderr = File::create(format!("/tmp/{}.daemon.err", program)).unwrap();
+
+        // daemonize情報作成
+        let daemonize = Daemonize::new()
+            .stdout(stdout)
+            .stderr(stderr)
+            .privileged_action(|| "Executed before drop privileges");
+
+        // daemonize
+        match daemonize.start() {
+        // daemonize開始
+            Ok(_v) => {
+                http_daemon(opt.clone(), dopt.clone());
+            },
+            // daemonizeエラー処理
+            Err(e) => eprintln!("Error, {}", e),
+        };
+    };
 
     // 録画ファイル作成処理
     if opt.channel != "" && opt.duration > 0 && opt.outfile != "" {
