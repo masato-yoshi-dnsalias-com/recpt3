@@ -1,4 +1,4 @@
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use crc::{Crc, CRC_32_MPEG_2};
 
 pub const MAX_PID: usize = 8192;
@@ -299,16 +299,24 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
         let mut cnt: usize = 13 as usize;
 
         sp.pmt_retain = 0;
+        debug!("analyze_pat data.len={} , size={}", data.len(), size);
 
         // prescan SID/PMT
-        while (cnt + 4)  <= size as usize {
+        while (cnt + 4)  <= size as usize && (cnt + 4) <= data.len() {
 
             let index: usize = (cnt + 1) as usize;
             let pid = get_pid(&data[index..]);
             if pid == 0x0010 {
                 cnt += 4;
+                debug!("analyze_pat prescan pid = 0x0010 continue");
                 continue
             };
+
+            // indexが18未満の場合はデータが壊れている可能性があるのでエラーリターン
+            if index < 18 {
+                error!("analyze_pat PATデータが壊れている");
+                return TSS_ERROR
+            }
 
             let service_id: i16 = ((data[cnt] as i16) << 8) + data[cnt + 1] as i16;
             avail_sids.push(service_id);
@@ -322,7 +330,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
 
         // 対象チャンネル判定
         cnt = 13 as usize;
-        while (cnt + 4)  <= size as usize {
+        while (cnt + 4)  <= size as usize && (cnt + 4) <= data.len() {
 
             let index: usize = (cnt + 1) as usize;
             
@@ -330,6 +338,7 @@ pub fn analyze_pat(mut sp: &mut Splitter, data: &[u8]) -> i32 {
             let pid = get_pid(&data[index..]);
             if pid == 0x0010 {
                 cnt += 4;
+                debug!("analyze_pat scan pid = 0x0010 continue");
                 continue
             };
 
