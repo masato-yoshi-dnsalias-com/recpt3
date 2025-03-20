@@ -313,7 +313,9 @@ fn main() {
 
     // 録画ファイル作成処理
     if opt.channel != "" && opt.duration > 0 && opt.outfile != "" {
-        recording(&mut opt, dopt);
+        if recording(&mut opt, dopt) == false {
+            process::exit(1);
+        };
     };
 
 }

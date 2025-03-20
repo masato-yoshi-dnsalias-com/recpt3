@@ -476,7 +476,7 @@ pub fn signal_get(device_file: &File, channel_type: &String) -> f32 {
 
 // 録画処理
 #[allow(dead_code)]
-pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -> () {
+pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -> bool {
 
     // 録画時間変数
     let mut rec_time: u64;
@@ -487,8 +487,8 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
     // チャンネル情報からチャンネルタイプ,チャンネル番号,Slot番号の設定
     let (channel_type, _freq) = channel_type(command_opt.channel.to_string());
     if channel_type == "" { 
-        warn!("Bad Channel !!");
-        return
+        error!("Bad Channel !!");
+        return false;
     };
 
     // チューナーデバイスの検索
@@ -496,8 +496,8 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
 
     // チューナーデバイスが見つからない場合はリターン
     if device == "" {
-        warn!("No devices available");
-        return;
+        error!("No devices available");
+        return false;
     };
 
     // チューナーデバイスファイルの作成
@@ -794,6 +794,8 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
     // 録画終了情報出力
     info!("Recorded {}sec", rec_time);
 
+    true
+
 }
 
 // チューナデバイスファイルの確定処理
@@ -816,7 +818,7 @@ pub fn tuner_device(device: &String, channel: &String) -> (String, Result<fs::Fi
         _ => ISDB_T_DEV
     };
 
-    // デバイスファイルが設定済時の処理
+    // デバイスファイルが設定未済時の処理
     if device == "" {
 
         // チャンネルテーブルの配列数分ループ
@@ -857,7 +859,7 @@ pub fn tuner_device(device: &String, channel: &String) -> (String, Result<fs::Fi
             }
         }
     }
-    // デバイスファイルが設定未済時の処理
+    // デバイスファイルが設定済時の処理
     else {
         // チューナーデバイスにコマンド指定デバイスを設定
         tuner_dev = device.clone();
@@ -865,7 +867,10 @@ pub fn tuner_device(device: &String, channel: &String) -> (String, Result<fs::Fi
 
     let file = match File::open(&tuner_dev) {
         Ok(file) => file,
-        Err(e) => return (tuner_dev, Err(e)),
+        Err(e) => {
+            tuner_dev = String::from("");
+            return (tuner_dev, Err(e));
+        },
     };
 
     // リターン情報
