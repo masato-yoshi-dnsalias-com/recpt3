@@ -156,6 +156,7 @@ impl Display for BCasCardError {
     }
 }
 
+#[allow(dead_code)]
 impl B_CAS_CARD {
     pub fn release(&mut self) {
         unsafe {
@@ -356,6 +357,7 @@ pub struct ARIB_STD_B25 {
     //>,
 }
 
+#[allow(dead_code)]
 impl ARIB_STD_B25 {
     pub fn release(&mut self) {
         unsafe {
