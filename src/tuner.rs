@@ -31,7 +31,7 @@ use crate::ts_splitter_core::{LENGTH_PACKET, MAX_PID, get_pid, split_startup, sp
     TSS_ERROR, TSS_SUCCESS};
 
 // BSデバイスファイル名
-const BSDEV: [&str; 92] = [
+const BSDEV: [&str; 118] = [
     "/dev/pt1video1",
     "/dev/pt1video0",
     "/dev/pt1video5",
@@ -56,6 +56,32 @@ const BSDEV: [&str; 92] = [
     "/dev/px4video9",
     "/dev/px4video12",
     "/dev/px4video13",
+    "/dev/pxmlt5video0",
+    "/dev/pxmlt5video1",
+    "/dev/pxmlt5video2",
+    "/dev/pxmlt5video3",
+    "/dev/pxmlt5video4",
+    "/dev/pxmlt5video5",
+    "/dev/pxmlt5video6",
+    "/dev/pxmlt5video7",
+    "/dev/pxmlt5video8",
+    "/dev/pxmlt5video9",
+    "/dev/pxmlt8video0",
+    "/dev/pxmlt8video1",
+    "/dev/pxmlt8video2",
+    "/dev/pxmlt8video3",
+    "/dev/pxmlt8video4",
+    "/dev/pxmlt8video5",
+    "/dev/pxmlt8video6",
+    "/dev/pxmlt8video7",
+    "/dev/pxmlt8video8",
+    "/dev/pxmlt8video9",
+    "/dev/pxmlt8video10",
+    "/dev/pxmlt8video11",
+    "/dev/pxmlt8video12",
+    "/dev/pxmlt8video13",
+    "/dev/pxmlt8video14",
+    "/dev/pxmlt8video15",
     "/dev/asv52201",
     "/dev/asv52200",
     "/dev/asv52205",
@@ -129,7 +155,7 @@ const BSDEV: [&str; 92] = [
 ];
 
 // 地上波デバイスファイル名
-const ISDB_T_DEV: [&str; 92] = [
+const ISDB_T_DEV: [&str; 118] = [
     "/dev/pt1video2",
     "/dev/pt1video3",
     "/dev/pt1video6",
@@ -154,6 +180,32 @@ const ISDB_T_DEV: [&str; 92] = [
     "/dev/px4video11",
     "/dev/px4video14",
     "/dev/px4video15",
+    "/dev/pxmlt5video0",
+    "/dev/pxmlt5video1",
+    "/dev/pxmlt5video2",
+    "/dev/pxmlt5video3",
+    "/dev/pxmlt5video4",
+    "/dev/pxmlt5video5",
+    "/dev/pxmlt5video6",
+    "/dev/pxmlt5video7",
+    "/dev/pxmlt5video8",
+    "/dev/pxmlt5video9",
+    "/dev/pxmlt8video0",
+    "/dev/pxmlt8video1",
+    "/dev/pxmlt8video2",
+    "/dev/pxmlt8video3",
+    "/dev/pxmlt8video4",
+    "/dev/pxmlt8video5",
+    "/dev/pxmlt8video6",
+    "/dev/pxmlt8video7",
+    "/dev/pxmlt8video8",
+    "/dev/pxmlt8video9",
+    "/dev/pxmlt8video10",
+    "/dev/pxmlt8video11",
+    "/dev/pxmlt8video12",
+    "/dev/pxmlt8video13",
+    "/dev/pxmlt8video14",
+    "/dev/pxmlt8video15",
     "/dev/asv52202",
     "/dev/asv52203",
     "/dev/asv52206",
@@ -246,38 +298,33 @@ struct BsChannel {
 }
 
 // BSチャンネル一覧
-const BS_CHANNELS: [BsChannel; 31] = [
+const BS_CHANNELS: [BsChannel; 26] = [
     BsChannel{channel: 151, set_freq:  0, slot: 0}, // 151ch：BS朝日
     BsChannel{channel: 161, set_freq:  0, slot: 1}, // 161ch：BS-TBS
     BsChannel{channel: 171, set_freq:  0, slot: 2}, // 171ch：BSテレ東
     BsChannel{channel: 191, set_freq:  1, slot: 0}, // 191ch：WOWOWプライム
-    BsChannel{channel: 103, set_freq:  1, slot: 1}, // 103ch：NHKBSプレミアム
+    BsChannel{channel: 236, set_freq:  1, slot: 1}, // 236ch：BSアニマックス
+    BsChannel{channel: 251, set_freq:  1, slot: 2}, // 251ch：BS釣りビジョン
     BsChannel{channel: 192, set_freq:  2, slot: 0}, // 192ch：WOWOWライブ
     BsChannel{channel: 193, set_freq:  2, slot: 1}, // 193ch：WOWOWシネマ
     BsChannel{channel: 211, set_freq:  4, slot: 0}, // 211ch：BS11イレブン
-    BsChannel{channel: 200, set_freq:  4, slot: 1}, // 200ch：スター・チャンネル1
-    BsChannel{channel: 222, set_freq:  4, slot: 2}, // 222ch：BS12トゥエルビ
-    BsChannel{channel: 141, set_freq:  6, slot: 0}, // 141ch：BS日テレS
+    BsChannel{channel: 222, set_freq:  4, slot: 1}, // 222ch：BS12TwellV
+    BsChannel{channel: 141, set_freq:  6, slot: 0}, // 141ch：BS日テレ
     BsChannel{channel: 181, set_freq:  6, slot: 1}, // 181ch：BSフジ
-    BsChannel{channel: 236, set_freq:  6, slot: 2}, // 236ch：BSアニマックス
-    BsChannel{channel: 231, set_freq:  6, slot: 2}, // 231ch：放送大学キャンパスex
-    BsChannel{channel: 232, set_freq:  6, slot: 2}, // 232ch：放送大学キャンパスon
-    BsChannel{channel: 233, set_freq:  6, slot: 2}, // 531ch：放送大学ラジオ
+    BsChannel{channel: 231, set_freq:  6, slot: 2}, // 231ch：放送大学
     BsChannel{channel: 101, set_freq:  7, slot: 0}, // 101ch：NHKBS1
-    BsChannel{channel: 102, set_freq:  7, slot: 0}, // 102ch：NHKBS1
-    BsChannel{channel: 201, set_freq:  7, slot: 1}, // 201ch：スター・チャンネル2
-    BsChannel{channel: 202, set_freq:  7, slot: 1}, // 202ch：スター・チャンネル3
+    BsChannel{channel: 201, set_freq:  7, slot: 1}, // 201ch：BS10スターch
+    BsChannel{channel: 200, set_freq:  7, slot: 2}, // 200ch：BS10
     BsChannel{channel: 245, set_freq:  9, slot: 0}, // 245ch：J SPORTS 4
     BsChannel{channel: 242, set_freq:  9, slot: 1}, // 242ch：J SPORTS 1
     BsChannel{channel: 243, set_freq:  9, slot: 2}, // 243ch：J SPORTS 2
     BsChannel{channel: 244, set_freq:  9, slot: 3}, // 244ch：J SPORTS 3
     BsChannel{channel: 252, set_freq: 10, slot: 0}, // 252ch：WOWOWプラス
     BsChannel{channel: 255, set_freq: 10, slot: 1}, // 255ch：日本映画専門ch
-    BsChannel{channel: 234, set_freq: 10, slot: 2}, // 234ch：グリーンチャンネル
+    BsChannel{channel: 234, set_freq: 10, slot: 2}, // 234ch：グリーンch
     BsChannel{channel: 256, set_freq: 11, slot: 0}, // 256ch：ディズニーch
     BsChannel{channel: 265, set_freq: 11, slot: 1}, // 265ch：BSよしもと
-    BsChannel{channel: 263, set_freq: 11, slot: 2}, // 263ch：BSJapanext
-    BsChannel{channel: 260, set_freq: 11, slot: 3}, // 260ch：BS松竹東急
+    BsChannel{channel: 260, set_freq: 11, slot: 2}, // 260ch：BS松竹東急
 ];
 
 // Show Channel Function
@@ -306,13 +353,13 @@ pub(crate)fn show_channels() {
     eprintln!("BS05_0: WOWOWライブ");
     eprintln!("BS05_1: WOWOWシネマ");
     eprintln!("BS09_0: BS11イレブン");
-    eprintln!("BS09_1: スターチャンネル1");
-    eprintln!("BS09_2: BS12トゥエルビ");
+    eprintln!("BS09_1: BS12トゥエルビ");
     eprintln!("BS13_0: BS日テレ");
     eprintln!("BS13_1: BSフジ");
     eprintln!("BS13_2: 放送大学");
     eprintln!("BS15_0: NHKBS1");
-    eprintln!("BS15_1: スターチャンネル2/3");
+    eprintln!("BS15_1: ＢＳ１０スターｃｈ");
+    eprintln!("BS15_2: ＢＳ１０");
     eprintln!("BS19_0: J SPORTS 4");
     eprintln!("BS19_1: J SPORTS 1");
     eprintln!("BS19_2: J SPORTS 2");
@@ -322,8 +369,7 @@ pub(crate)fn show_channels() {
     eprintln!("BS21_2: グリーンチャンネル");
     eprintln!("BS23_0: ディズニーch");
     eprintln!("BS23_1: BSよしもと");
-    eprintln!("BS23_2: BSJapanext");
-    eprintln!("BS23_3: BS松竹東急");
+    eprintln!("BS23_2: BS松竹東急");
     eprintln!("C13-C63: CATV Channels");
     eprintln!("CS2-CS24: CS Channels");
 
@@ -908,8 +954,18 @@ pub fn tune(device: &String, file: &File, channel: &String, lnb: &u64) -> () {
     debug!("tune Freq = {},{}", freq.ch, freq.slot);
 
     // チャンネル設定
-    let errno = unsafe { set_ch(fd,&[freq]).unwrap() };
-    if errno < 0 { eprintln!("Cannot tune to the specified channel: {}", device) };
-    info!("device = {}", device);
+    //let errno = unsafe { set_ch(fd,&[freq]).unwrap() };
+    match unsafe { set_ch(fd,&[freq]) } {
+        Ok(_) => {
+            info!("device = {}", device);
+        },
+        Err(e) => {
+            error!("tune set_ch error(code={})", e);
+            error!("tune Cannot tune to the specified channel: {}", device);
+            process::exit(-1);
+        },
+    };
+    //if errno < 0 { error!("Cannot tune to the specified channel: {}", device) };
+    //info!("device = {}", device);
 
 }
