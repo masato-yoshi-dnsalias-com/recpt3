@@ -71,14 +71,14 @@ const BSDEV: [&str; 118] = [
     "/dev/pxmlt8video2",
     "/dev/pxmlt8video3",
     "/dev/pxmlt8video4",
-    "/dev/pxmlt8video5",
-    "/dev/pxmlt8video6",
-    "/dev/pxmlt8video7",
     "/dev/pxmlt8video8",
     "/dev/pxmlt8video9",
     "/dev/pxmlt8video10",
     "/dev/pxmlt8video11",
     "/dev/pxmlt8video12",
+    "/dev/pxmlt8video5",
+    "/dev/pxmlt8video6",
+    "/dev/pxmlt8video7",
     "/dev/pxmlt8video13",
     "/dev/pxmlt8video14",
     "/dev/pxmlt8video15",
@@ -345,11 +345,11 @@ pub(crate)fn show_channels() {
 
     // チャンネルリストの表示
     eprintln!("BS01_0: BS朝日");
-    eprintln!("BS01_1: BS-TB");
+    eprintln!("BS01_1: BS-TBS");
     eprintln!("BS01_2: BSテレ東");
     eprintln!("BS03_0: WOWOWプライム");
-    eprintln!("BS13_1: BSアニマックス");
-    eprintln!("BS13_2: BS釣りビジョン");
+    eprintln!("BS03_1: BSアニマックス");
+    eprintln!("BS03_2: BS釣りビジョン");
     eprintln!("BS05_0: WOWOWライブ");
     eprintln!("BS05_1: WOWOWシネマ");
     eprintln!("BS09_0: BS11イレブン");
