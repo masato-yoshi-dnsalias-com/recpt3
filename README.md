@@ -18,7 +18,7 @@ libarib25は以下のものをお使い下さい。
  libarib25：https://github.com/stz2012/libarib25  
 ※機能統合版(https://github.com/tsukumijima/libaribb25) を使う場合は関数が増えいるため、arib25.rsのARIB_STD_B25構造体のコメントを外してください。（テストはしてません）  
 
-アースソフトPT3 と Plex PX-Q3PE5で動作確認しています。
+アースソフトPT3 と Plex PX-Q3PE5,PX-MLT8PEで動作確認しています。
 
 ## recpt3：録画コマンド
     recpt3 [--b25 [--round N] [--strip] [--EMM]] [--http portnumber] [--device devicefile] [--lnb voltage] [--sid SID1,SID2,...] channel rectime outfile
