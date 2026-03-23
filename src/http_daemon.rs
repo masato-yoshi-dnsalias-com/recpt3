@@ -139,7 +139,7 @@ fn response_stream(command_opt: &mut CommanLineOpt, decoder_opt: &DecoderOptions
                 };
 
                 // チューナーデバイスの検索
-                let (device, file) = tuner_device(&command_opt.device, &channel.to_string());
+                let (device, file) = tuner_device(&command_opt.device, &channel.to_string(), &command_opt.reverse_device_order);
 
                 // チューナーデバイスが見つからない場合はリターン
                 if device == "" {

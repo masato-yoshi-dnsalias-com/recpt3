@@ -32,6 +32,7 @@ pub struct CommanLineOpt {
     //pub host_to: String,
     //pub port_to: u16,
     pub device: String,
+    pub reverse_device_order: bool,
     pub sid_list: String,
     pub use_splitter: bool,
     pub _use_round: bool,

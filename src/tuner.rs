@@ -538,7 +538,7 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
     };
 
     // チューナーデバイスの検索
-    let (device, file) = tuner_device(&command_opt.device, &command_opt.channel);
+    let (device, file) = tuner_device(&command_opt.device, &command_opt.channel, &command_opt.reverse_device_order);
 
     // チューナーデバイスが見つからない場合はリターン
     if device == "" {
@@ -845,7 +845,7 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
 }
 
 // チューナデバイスファイルの確定処理
-pub fn tuner_device(device: &String, channel: &String) -> (String, Result<fs::File, io::Error>) {
+pub fn tuner_device(device: &String, channel: &String, reverse_device_order: &bool) -> (String, Result<fs::File, io::Error>) {
 
     // チューナデバイスファイルの変数設定
     let mut tuner_dev = "".to_string();
@@ -867,8 +867,19 @@ pub fn tuner_device(device: &String, channel: &String) -> (String, Result<fs::Fi
     // デバイスファイルが設定未済時の処理
     if device == "" {
 
+
+        // チャンネルテーブル配列数
+        let range = 0..tuner.len();
+
+        // forループのイテレータを作成
+        let iter: Box<dyn Iterator<Item = usize>> = if *reverse_device_order {
+            Box::new(range.rev())
+        } else {
+            Box::new(range)
+        };
+
         // チャンネルテーブルの配列数分ループ
-        for i in 0..tuner.len() {
+        for i in iter {
 
             // チューナーデバイスファイルの存在チェック
             if Path::new(tuner[i]).exists() {

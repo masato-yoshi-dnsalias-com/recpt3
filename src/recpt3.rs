@@ -49,6 +49,7 @@ pub(crate) fn command_line_check(program: &str) -> (CommanLineOpt, DecoderOption
     //let mut host_to: String = "".to_string();
     //let mut port_to: u16 = 0;
     let mut device: String = "".to_string();
+    let mut reverse_device_order: bool = false;
     let mut sid_list: String = "".to_string();
     let mut use_round: bool = false;
     let mut use_lnb: bool = false;
@@ -80,6 +81,7 @@ pub(crate) fn command_line_check(program: &str) -> (CommanLineOpt, DecoderOption
     opts.optopt("p","port","Port number to connect","portnumber");
     opts.optopt("H","http","Turn on http broadcasting (run as a daemon)","port number");
     opts.optopt("d","device","Specify devicefile to use","devicefile");
+    opts.optflag("o","reverse_device","Reverse Device Order");
     opts.optopt("n","lnb","Specify LNB voltage (0, 11, 15)","voltage");
     opts.optopt("","sid","Specify SID number in CSV format (101,102,...)","SID1,SID2,...");
     opts.optflag("h","help","Show this help");
@@ -109,17 +111,23 @@ pub(crate) fn command_line_check(program: &str) -> (CommanLineOpt, DecoderOption
         process::exit(0);
     }
 
-    //
     // チャンネルリストを表示
     if matches.opt_present("list") {
         show_channels();
         process::exit(0);
     }
+
     // チューナーデバイスを設定
     if matches.opt_present("device") {
         use_device = true;
         device = matches.opt_str("device").unwrap().to_string();
         info!("using device: {}", device);
+    }
+
+    // チューナーデバイスを逆順で検索
+    if matches.opt_present("reverse_device") {
+        reverse_device_order = true;
+        info!("reverse device order");
     }
 
     // LNB voltageの設定
@@ -232,6 +240,7 @@ pub(crate) fn command_line_check(program: &str) -> (CommanLineOpt, DecoderOption
             //host_to: host_to.to_string(),
             //port_to: port_to,
             device: device.to_string(),
+            reverse_device_order: reverse_device_order,
             sid_list: sid_list.to_string(),
             use_splitter: use_splitter,
             _use_round: use_round,
@@ -319,4 +328,3 @@ fn main() {
     };
 
 }
-

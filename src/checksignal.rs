@@ -41,6 +41,7 @@ pub fn show_usage(program: &str, opts: &Options) {
 pub struct CommanLineOpt {
     pub _program: String,
     pub device: String,
+    reverse_device_order: bool,
     pub _use_lnb: bool,
     pub _lnb: u64,
     pub _use_device: bool,
@@ -51,6 +52,7 @@ pub struct CommanLineOpt {
 pub(crate) fn command_line_check(program: &str) -> CommanLineOpt {
 
     let mut device: String = "".to_string();
+    let mut reverse_device_order: bool = false;
     let mut use_lnb: bool = false;
     let mut lnb: u64 = 0;
     let mut use_device: bool = false;
@@ -63,6 +65,7 @@ pub(crate) fn command_line_check(program: &str) -> CommanLineOpt {
 
     // オプションを設定
     opts.optopt("d","device","Specify devicefile to use","devicefile");
+    opts.optflag("o","reverse_device","Reverse Device Order");
     opts.optopt("n","lnb","Specify LNB voltage (0, 11, 15)","voltage");
     //opts.optflag("b","bell","Notify signal quality by bell");
     opts.optflag("h","help","Show this help");
@@ -97,11 +100,18 @@ pub(crate) fn command_line_check(program: &str) -> CommanLineOpt {
         show_channels();
         process::exit(0);
     }
+
     // チューナーデバイスを設定
     if matches.opt_present("device") {
         use_device = true;
         device = matches.opt_str("device").unwrap().to_string();
         info!("using device: {}", device);
+    }
+
+    // チューナーデバイスを逆順で検索
+    if matches.opt_present("reverse_device") {
+        reverse_device_order = true;
+        info!("reverse device order");
     }
 
     // LNB voltageの設定
@@ -131,6 +141,7 @@ pub(crate) fn command_line_check(program: &str) -> CommanLineOpt {
     CommanLineOpt {
         _program: program.to_string(),
         device: device.to_string(),
+        reverse_device_order: reverse_device_order,
         _use_lnb: use_lnb,
         _lnb: lnb,
         _use_device: use_device,
@@ -179,7 +190,7 @@ fn main() {
     };
 
     // チューナーデバイスの検索
-    let (device, file) = tuner_device(&command_opt.device, &command_opt.channel);
+    let (device, file) = tuner_device(&command_opt.device, &command_opt.channel, &command_opt.reverse_device_order);
 
     // チューナーデバイスが見つからない場合はリターン
     if device == "" {
