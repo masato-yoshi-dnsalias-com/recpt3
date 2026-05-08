@@ -1,6 +1,6 @@
 [package]
 name = "recpt3"
-version = "1.4.0"
+version = "1.5.0"
 edition = "2021"
 
 [dependencies]
@@ -19,8 +19,10 @@ libc = { version = "^0.2" }
 log = {version = "^0.4.17"}
 nix = { version = "^0.28.0", features = ["ioctl"] }
 pin-project-lite = { version = "^0.2.4" }
+posix_mq = { version = "3771.0.0" }
 signal-hook = { version = "^0.3" }
 simplelog = { version = "^0.9" }
+sscanf = { version = "^0.5.0" }
 
 [build-dependencies]
 serde = { version = "^1.0", features = ["derive"] }
@@ -41,3 +43,7 @@ path = "src/ts_splitter.rs"
 [[bin]]
 name = "drop_check"
 path = "src/drop_check.rs"
+
+[[bin]]
+name = "recpt3cntl"
+path = "src/recpt3cntl.rs"

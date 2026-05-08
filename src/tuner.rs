@@ -11,9 +11,11 @@ use std::os::fd::AsRawFd;
 use std::path::Path;
 use std::process;
 use std::result::Result;
-use std::sync::{Arc, atomic::AtomicBool, atomic::Ordering};
+use sscanf::sscanf;
+use std::sync::{Arc, atomic::AtomicBool, atomic::Ordering, mpsc};
 use std::thread;
 use std::time::{Duration, SystemTime};
+use posix_mq::{Name,Queue};
 
 nix::ioctl_write_buf!(set_ch, 0x8d, 0x01,IoctlFreq);
 nix::ioctl_none!(start_rec, 0x8d, 0x02);
@@ -528,7 +530,8 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
     let mut rec_time: u64;
 
     // プロセスIDの表示
-    info!("pid = {}", process::id());
+    let pid = process::id();
+    info!("pid = {}", pid);
 
     // チャンネル情報からチャンネルタイプ,チャンネル番号,Slot番号の設定
     let (channel_type, _freq) = channel_type(command_opt.channel.to_string());
@@ -603,27 +606,93 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
             eprintln!("Received signal {:?}", sig);
             match sig {
                 SIGPIPE => {
+
+                    // シグナル受信処理メッセージ表示
                     warn!("\nSIGPIPE received. cleaning up...");
+
+                    // スレッド終了
                     loop_exit2.store(true, Ordering::Release);
                 },
                 SIGINT => {
+
+                    // シグナル受信処理メッセージ表示
                     warn!("\nSIGINT received. cleaning up...");
+
+                    // スレッド終了
                     loop_exit2.store(true, Ordering::Release);
                 },
                 SIGTERM => {
+
+                    // シグナル受信処理メッセージ表示
                     warn!("\nSIGTERM received. cleaning up...");
+
+                    // スレッド終了
                     loop_exit2.store(true, Ordering::Release);
                 },
                 SIGUSR1 => {
+
+                    // シグナル受信処理メッセージ表示
                     debug!("recording SIGUSR1 received. cleaning up...");
+
+                    // スレッド終了
                     loop_exit2.store(true, Ordering::Release);
                 },
                 SIGUSR2 => {
+
+                    // シグナル受信処理メッセージ表示
                     warn!("\nSIGUSR2 received. cleaning up...");
+
+                    // スレッド終了
                     loop_exit2.store(true, Ordering::Release);
                 },
                 _ => {},
             };
+        }
+    });
+
+    // posixメッセージキューＩＤの作成
+    let mq_name_id = format!("{}{}_{}","/",PROGRAM_RECPT,pid);
+    let mq_name_id_thread = mq_name_id.clone();
+
+    // メインスレッドへデータを送るためのチャネルを作成
+    let (tx, rx) = mpsc::channel();
+
+    // posix_mq受信スレッド
+    thread::spawn(move || {
+
+        // posixメッセージキュー名の作成
+        let mq_name = Name::new(&mq_name_id_thread).unwrap();
+
+        // posixメッセージキューのオープンor作成
+        let queue = Queue::open_or_create(mq_name).expect("posixメッセージキューのオープンエラー");
+        info!("posixメッセージキューのオープン(/dev/mqueue{})", &mq_name_id_thread);
+
+        loop {
+
+            match queue.receive() {
+                Ok(message) => {
+
+                    // Message型からサイズを取得
+                    let size = message.data.len();
+
+                    if size > 0 {
+                        //let mq_msg = String::from_utf8_lossy(&mq_buffer[..size]).to_string();
+                        let mq_msg = message.data;
+                        debug!("recive msg = \"{}\"", String::from_utf8_lossy(&mq_msg));
+
+                        // メインスレッドに通知
+                        if tx.send(mq_msg).is_err() {
+                            break; // メインスレッドが終了していたらループを抜ける
+                        }
+                    }
+                }
+                Err(e) => {
+
+                    // 受信エラーメッセージ表示
+                    error!("posix message queue 受信エラー: {:?}", e);
+
+                }
+            }
         }
     });
 
@@ -807,6 +876,26 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
             // リードバッファクリア
             data_reader.consume(length);
 
+#[warn(unused_assignments)]
+            //let mut new_rec_time = 0;
+
+            while let Ok(received_msg) = rx.try_recv() {
+
+                // posix message queue受信スレッドからのメッセージ受信
+                let rcv_msg = String::from_utf8_lossy(&received_msg);
+
+                // 受信データを分割
+                let parsed = sscanf!(rcv_msg, "time={u64}");
+
+                // 受信データを変数へ設定
+                let new_rec_time = parsed.unwrap();
+
+                // 新しい録画時間を設定＆表示
+                command_opt.duration = new_rec_time.clone();
+                info!("New Record Time Recived = {}", new_rec_time);
+
+            }
+
             // 録画時間が経過したらループ終了
             rec_time = SystemTime::now().duration_since(start_time).unwrap().as_secs();
 
@@ -839,6 +928,13 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
 
     // 録画終了情報出力
     info!("Recorded {}sec", rec_time);
+
+    // posixメッセージキュー削除
+    let mq_name = Name::new(&mq_name_id).unwrap();
+    let queue = Queue::open(mq_name).expect("posixメッセージキューのオープン失敗");
+    if let Err(e) = Queue::delete(queue) {
+        warn!("posixメッセージキューの削除に失敗しました。(/dev/mqueue/{},{})", mq_name_id, e);
+    };
 
     true
 
@@ -980,3 +1076,6 @@ pub fn tune(device: &String, file: &File, channel: &String, lnb: &u64) -> () {
     //info!("device = {}", device);
 
 }
+
+// posix message queue 受信処理
+

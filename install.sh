@@ -3,6 +3,9 @@
 RUSTFLAGS="-L /lib -L /usr/lib -L /usr/local/lib" cargo build --release --bin recpt3
 install target/release/recpt3 /usr/local/bin
 
+RUSTFLAGS="-L /lib -L /usr/lib -L /usr/local/lib" cargo build --release --bin recpt3cntl
+install target/release/recpt3cntl /usr/local/bin
+
 RUSTFLAGS="-L /lib -L /usr/lib -L /usr/local/lib" cargo build --release --bin checksignal
 install target/release/checksignal /usr/local/bin
 
