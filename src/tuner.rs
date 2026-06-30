@@ -924,6 +924,7 @@ pub fn recording(command_opt: &mut CommanLineOpt, decoder_opt: DecoderOptions) -
     if command_opt.use_b25 == true {
         unsafe { b25_shutdown(dec, bcas) };
         info!("B25 shutdown");
+        drop(device_file);
     };
 
     // 録画終了情報出力
